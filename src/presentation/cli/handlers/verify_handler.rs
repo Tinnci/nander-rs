@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::application::use_cases::detect_chip::DetectChipUseCase;
 use crate::application::use_cases::verify_flash::{VerifyFlashUseCase, VerifyParams};
-use crate::domain::{FlashType, OobMode};
+use crate::domain::{BadBlockStrategy, FlashType, OobMode};
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
 use crate::infrastructure::flash_protocol::nand::SpiNand;
@@ -27,7 +27,13 @@ impl VerifyHandler {
         }
     }
 
-    pub fn handle(&self, input: PathBuf, start: u32, disable_ecc: bool) -> Result<()> {
+    pub fn handle(
+        &self,
+        input: PathBuf,
+        start: u32,
+        disable_ecc: bool,
+        strategy: BadBlockStrategy,
+    ) -> Result<()> {
         let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
@@ -41,6 +47,7 @@ impl VerifyHandler {
             data: &expected_data,
             use_ecc: !disable_ecc,
             oob_mode: OobMode::None,
+            bad_block_strategy: strategy,
         };
 
         match spec.flash_type {

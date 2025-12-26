@@ -2,13 +2,14 @@
 //!
 //! Orchestrates erasing flash memory blocks.
 
-use crate::domain::{Address, EraseRequest, FlashOperation, Progress};
+use crate::domain::{Address, BadBlockStrategy, EraseRequest, FlashOperation, Progress};
 use crate::error::Result;
 
 /// Parameters for erase operation
 pub struct EraseParams {
     pub address: u32,
     pub length: u32,
+    pub bad_block_strategy: BadBlockStrategy,
 }
 
 /// Use case for erasing flash memory
@@ -30,6 +31,7 @@ impl<F: FlashOperation> EraseFlashUseCase<F> {
         let request = EraseRequest {
             address: Address::new(params.address),
             length: params.length,
+            bad_block_strategy: params.bad_block_strategy,
         };
 
         self.flash.erase(request, &on_progress)

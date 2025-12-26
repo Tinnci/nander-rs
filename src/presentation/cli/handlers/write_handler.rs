@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use crate::application::use_cases::detect_chip::DetectChipUseCase;
 use crate::application::use_cases::write_flash::{WriteFlashUseCase, WriteParams};
-use crate::domain::FlashType;
+use crate::domain::{BadBlockStrategy, FlashType};
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
 use crate::infrastructure::flash_protocol::nand::SpiNand;
@@ -37,6 +37,7 @@ impl WriteHandler {
         start: u32,
         verify: bool,
         disable_ecc: bool,
+        strategy: BadBlockStrategy,
     ) -> Result<()> {
         let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
@@ -53,6 +54,7 @@ impl WriteHandler {
             data: &data,
             use_ecc: !disable_ecc,
             verify,
+            bad_block_strategy: strategy,
         };
 
         match spec.flash_type {

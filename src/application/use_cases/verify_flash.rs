@@ -2,7 +2,7 @@
 //!
 //! Orchestrates the verification of data written to flash memory.
 
-use crate::domain::{Address, FlashOperation, OobMode, Progress, ReadRequest};
+use crate::domain::{Address, BadBlockStrategy, FlashOperation, OobMode, Progress, ReadRequest};
 use crate::error::{Error, Result};
 
 /// Parameters for verify operation
@@ -11,6 +11,7 @@ pub struct VerifyParams<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub oob_mode: OobMode,
+    pub bad_block_strategy: BadBlockStrategy,
 }
 
 /// Use case for verifying data in flash memory
@@ -34,6 +35,7 @@ impl<F: FlashOperation> VerifyFlashUseCase<F> {
             length: params.data.len() as u32,
             use_ecc: params.use_ecc,
             oob_mode: params.oob_mode,
+            bad_block_strategy: params.bad_block_strategy,
         };
 
         // Read back the data from flash

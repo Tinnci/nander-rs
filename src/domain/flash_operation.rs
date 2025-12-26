@@ -2,6 +2,7 @@
 //!
 //! Definintions of core flash operations as seen by the application.
 
+use super::bad_block::BadBlockStrategy;
 use super::types::{Address, Progress};
 use crate::error::Result;
 
@@ -11,6 +12,7 @@ pub struct ReadRequest {
     pub length: u32,
     pub use_ecc: bool,
     pub oob_mode: OobMode,
+    pub bad_block_strategy: BadBlockStrategy,
 }
 
 /// How to handle Out Of Band data
@@ -30,12 +32,14 @@ pub struct WriteRequest<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub verify: bool,
+    pub bad_block_strategy: BadBlockStrategy,
 }
 
 /// Request for an erase operation
 pub struct EraseRequest {
     pub address: Address,
     pub length: u32,
+    pub bad_block_strategy: BadBlockStrategy,
 }
 
 /// Service Trait for Flash Operations

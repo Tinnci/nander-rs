@@ -4,6 +4,7 @@
 
 use std::time::{Duration, Instant};
 
+use crate::domain::bad_block::BadBlockStrategy;
 use crate::domain::chip::ChipSpec;
 use crate::domain::{EraseRequest, FlashOperation, OobMode, Progress, ReadRequest, WriteRequest};
 use crate::error::{Error, Result};
@@ -109,6 +110,27 @@ impl<P: Programmer> SpiNand<P> {
         self.programmer.set_cs(false)?;
         Ok(data)
     }
+
+    fn is_bad_block(&mut self, block: u32) -> Result<bool> {
+        let page_size = self.spec.layout.page_size;
+        let pages_per_block = self.spec.layout.block_size / page_size;
+        let first_page = block * pages_per_block;
+
+        // Check first byte of OOB in the first page of the block
+        // SPI NAND standard: Bad block marker is usually at the first byte of spare area
+        let oob = self.read_page_internal(first_page, page_size as u16, 1)?;
+        if oob[0] != 0xFF {
+            return Ok(true);
+        }
+
+        // Standard also suggests checking the second page
+        let oob = self.read_page_internal(first_page + 1, page_size as u16, 1)?;
+        if oob[0] != 0xFF {
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
 }
 
 impl<P: Programmer> FlashOperation for SpiNand<P> {
@@ -129,16 +151,41 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         };
 
         let total_pages = request.length.div_ceil(page_size);
+        let pages_per_block = self.spec.layout.block_size / page_size;
         let mut result = Vec::with_capacity(request.length as usize);
         let mut remaining = request.length as usize;
 
-        for i in 0..total_pages {
-            let page = start_page + i;
-            let chunk = self.read_page_internal(page, col_offset, read_len_per_page)?;
+        let mut current_page = start_page;
+        let mut pages_read = 0;
+
+        while pages_read < total_pages {
+            let current_block = current_page / pages_per_block;
+
+            if request.bad_block_strategy != BadBlockStrategy::Include {
+                if self.is_bad_block(current_block)? {
+                    match request.bad_block_strategy {
+                        BadBlockStrategy::Skip => {
+                            // Skip the entire block
+                            current_page = (current_block + 1) * pages_per_block;
+                            continue;
+                        }
+                        BadBlockStrategy::Fail => {
+                            return Err(Error::BadBlock {
+                                block: current_block,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            let chunk = self.read_page_internal(current_page, col_offset, read_len_per_page)?;
 
             let to_copy = remaining.min(chunk.len());
             result.extend_from_slice(&chunk[..to_copy]);
             remaining -= to_copy;
+            pages_read += 1;
+            current_page += 1;
 
             on_progress(Progress::new(result.len() as u64, request.length as u64));
 
@@ -162,12 +209,35 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         }
 
         let start_page = start_addr / page_size;
+        let pages_per_block = self.spec.layout.block_size / page_size;
         let data_len = request.data.len();
         let total_pages = data_len.div_ceil(page_size as usize);
 
-        for i in 0..total_pages {
-            let page = start_page + i as u32;
-            let offset = i * page_size as usize;
+        let mut current_page = start_page;
+        let mut offset = 0usize;
+        let mut pages_written = 0;
+
+        while pages_written < total_pages {
+            let current_block = current_page / pages_per_block;
+
+            if request.bad_block_strategy != BadBlockStrategy::Include {
+                if self.is_bad_block(current_block)? {
+                    match request.bad_block_strategy {
+                        BadBlockStrategy::Skip => {
+                            // Skip the entire block
+                            current_page = (current_block + 1) * pages_per_block;
+                            continue;
+                        }
+                        BadBlockStrategy::Fail => {
+                            return Err(Error::BadBlock {
+                                block: current_block,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             let chunk_end = (offset + page_size as usize).min(data_len);
             let mut page_buf = vec![0xFFu8; page_size as usize];
             page_buf[..(chunk_end - offset)].copy_from_slice(&request.data[offset..chunk_end]);
@@ -183,7 +253,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             self.programmer.set_cs(false)?;
 
             // Program Execute
-            let row_addr = self.page_to_row_addr(page);
+            let row_addr = self.page_to_row_addr(current_page);
             self.programmer.set_cs(true)?;
             self.programmer.spi_write(&[
                 CMD_NAND_PROGRAM_EXECUTE,
@@ -198,11 +268,15 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             let status = self.get_feature(FEATURE_STATUS)?;
             if status & STATUS_NAND_P_FAIL != 0 {
                 return Err(Error::WriteFailed {
-                    address: page * page_size,
+                    address: current_page * page_size,
                 });
             }
 
             on_progress(Progress::new(chunk_end as u64, data_len as u64));
+
+            offset += page_size as usize;
+            pages_written += 1;
+            current_page += 1;
         }
 
         if request.verify {
@@ -226,9 +300,30 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         let total_blocks = request.length.div_ceil(block_size);
         let start_block = start_addr / block_size;
 
-        for i in 0..total_blocks {
-            let block = start_block + i;
-            let page = block * (block_size / page_size);
+        let mut blocks_erased = 0;
+        let mut current_block = start_block;
+
+        while blocks_erased < total_blocks {
+            if request.bad_block_strategy != BadBlockStrategy::Include {
+                if self.is_bad_block(current_block)? {
+                    match request.bad_block_strategy {
+                        BadBlockStrategy::Skip => {
+                            // Go to next block without incrementing blocks_erased count?
+                            // Actually, if we skip, we usually want to erase the NEXT good block to satisfy the request.
+                            current_block += 1;
+                            continue;
+                        }
+                        BadBlockStrategy::Fail => {
+                            return Err(Error::BadBlock {
+                                block: current_block,
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            let page = current_block * (block_size / page_size);
 
             self.write_enable()?;
 
@@ -246,10 +341,15 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
             let status = self.get_feature(FEATURE_STATUS)?;
             if status & STATUS_NAND_E_FAIL != 0 {
-                return Err(Error::EraseFailed { block });
+                return Err(Error::EraseFailed {
+                    block: current_block,
+                });
             }
 
-            on_progress(Progress::new((i + 1) as u64, total_blocks as u64));
+            blocks_erased += 1;
+            current_block += 1;
+
+            on_progress(Progress::new(blocks_erased as u64, total_blocks as u64));
         }
 
         Ok(())

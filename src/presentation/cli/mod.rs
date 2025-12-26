@@ -5,9 +5,20 @@
 pub mod args;
 pub mod handlers;
 
+use crate::domain::bad_block::BadBlockStrategy;
 use crate::error::Result;
 use args::{Args, Command};
 use handlers::*;
+
+fn get_bad_block_strategy(skip: bool, include: bool) -> BadBlockStrategy {
+    if include {
+        BadBlockStrategy::Include
+    } else if skip {
+        BadBlockStrategy::Skip
+    } else {
+        BadBlockStrategy::Fail
+    }
+}
 
 /// Execute the command specified by CLI arguments using the new architecture
 pub fn execute(args: Args) -> Result<()> {
@@ -25,34 +36,46 @@ pub fn execute(args: Args) -> Result<()> {
             length,
             start,
             disable_ecc,
+            skip_bad,
+            include_bad,
         } => {
             let handler = ReadHandler::new();
-            handler.handle(output, start, length, disable_ecc)
+            let strategy = get_bad_block_strategy(skip_bad, include_bad);
+            handler.handle(output, start, length, disable_ecc, strategy)
         }
         Command::Write {
             input,
             start,
             verify,
             disable_ecc,
+            skip_bad,
+            include_bad,
         } => {
             let handler = WriteHandler::new();
-            handler.handle(input, start, verify, disable_ecc)
+            let strategy = get_bad_block_strategy(skip_bad, include_bad);
+            handler.handle(input, start, verify, disable_ecc, strategy)
         }
         Command::Erase {
             length,
             start,
             disable_ecc: _, // Erase handler currently doesn't use ECC
+            skip_bad,
+            include_bad,
         } => {
             let handler = EraseHandler::new();
-            handler.handle(start, length)
+            let strategy = get_bad_block_strategy(skip_bad, include_bad);
+            handler.handle(start, length, strategy)
         }
         Command::Verify {
             input,
             start,
             disable_ecc,
+            skip_bad,
+            include_bad,
         } => {
             let handler = VerifyHandler::new();
-            handler.handle(input, start, disable_ecc)
+            let strategy = get_bad_block_strategy(skip_bad, include_bad);
+            handler.handle(input, start, disable_ecc, strategy)
         }
     }
 }

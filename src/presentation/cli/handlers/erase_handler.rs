@@ -6,7 +6,7 @@ use std::io::Write;
 
 use crate::application::use_cases::detect_chip::DetectChipUseCase;
 use crate::application::use_cases::erase_flash::{EraseFlashUseCase, EraseParams};
-use crate::domain::FlashType;
+use crate::domain::{BadBlockStrategy, FlashType};
 use crate::error::Result;
 use crate::infrastructure::chip_database::ChipRegistry;
 use crate::infrastructure::flash_protocol::nand::SpiNand;
@@ -29,7 +29,12 @@ impl EraseHandler {
         }
     }
 
-    pub fn handle(&self, start: u32, length: Option<u32>) -> Result<()> {
+    pub fn handle(
+        &self,
+        start: u32,
+        length: Option<u32>,
+        strategy: BadBlockStrategy,
+    ) -> Result<()> {
         let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
@@ -38,6 +43,7 @@ impl EraseHandler {
         let params = EraseParams {
             address: start,
             length: erase_len,
+            bad_block_strategy: strategy,
         };
 
         println!("Erasing {} bytes starting at 0x{:08X}...", erase_len, start);

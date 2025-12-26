@@ -52,6 +52,14 @@ pub enum Command {
         /// Disable internal ECC (for NAND flash, reads raw page data including ECC bytes)
         #[arg(short = 'd', long = "no-ecc")]
         disable_ecc: bool,
+
+        /// Skip bad blocks encountered during operation (NAND only)
+        #[arg(short = 'k', long = "skip-bad")]
+        skip_bad: bool,
+
+        /// Include blocks even if marked bad (NAND only)
+        #[arg(short = 'K', long = "include-bad")]
+        include_bad: bool,
     },
 
     /// Write a file to flash
@@ -72,6 +80,14 @@ pub enum Command {
         /// Disable internal ECC (for NAND flash, writes raw page data including ECC bytes)
         #[arg(short = 'd', long = "no-ecc")]
         disable_ecc: bool,
+
+        /// Skip bad blocks encountered during operation (NAND only)
+        #[arg(short = 'k', long = "skip-bad")]
+        skip_bad: bool,
+
+        /// Include blocks even if marked bad (NAND only)
+        #[arg(short = 'K', long = "include-bad")]
+        include_bad: bool,
     },
 
     /// Erase flash contents
@@ -88,6 +104,14 @@ pub enum Command {
         /// Disable internal ECC (for NAND flash)
         #[arg(short = 'd', long = "no-ecc")]
         disable_ecc: bool,
+
+        /// Skip bad blocks encountered during operation (NAND only)
+        #[arg(short = 'k', long = "skip-bad")]
+        skip_bad: bool,
+
+        /// Include blocks even if marked bad (NAND only)
+        #[arg(short = 'K', long = "include-bad")]
+        include_bad: bool,
     },
 
     /// Verify flash contents against a file
@@ -104,5 +128,13 @@ pub enum Command {
         /// Disable internal ECC (for NAND flash)
         #[arg(short = 'd', long = "no-ecc")]
         disable_ecc: bool,
+
+        /// Skip bad blocks encountered during operation (NAND only)
+        #[arg(short = 'k', long = "skip-bad")]
+        skip_bad: bool,
+
+        /// Include blocks even if marked bad (NAND only)
+        #[arg(short = 'K', long = "include-bad")]
+        include_bad: bool,
     },
 }
