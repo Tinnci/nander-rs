@@ -38,6 +38,7 @@ impl ReadHandler {
         length: Option<u32>,
         disable_ecc: bool,
         strategy: BadBlockStrategy,
+        oob_mode: OobMode,
     ) -> Result<()> {
         let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
@@ -49,7 +50,7 @@ impl ReadHandler {
             address: start,
             length: read_len,
             use_ecc: !disable_ecc,
-            oob_mode: OobMode::None, // Default to no OOB for standard read
+            oob_mode,
             bad_block_strategy: strategy,
         };
 

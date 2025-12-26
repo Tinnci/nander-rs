@@ -32,6 +32,7 @@ pub struct WriteRequest<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub verify: bool,
+    pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
 }
 

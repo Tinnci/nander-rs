@@ -60,6 +60,14 @@ pub enum Command {
         /// Include blocks even if marked bad (NAND only)
         #[arg(short = 'K', long = "include-bad")]
         include_bad: bool,
+
+        /// Read OOB data alongside main page (NAND only)
+        #[arg(short = 'o', long = "oob")]
+        oob: bool,
+
+        /// Read ONLY OOB data (NAND only)
+        #[arg(short = 'O', long = "oob-only")]
+        oob_only: bool,
     },
 
     /// Write a file to flash
@@ -88,6 +96,14 @@ pub enum Command {
         /// Include blocks even if marked bad (NAND only)
         #[arg(short = 'K', long = "include-bad")]
         include_bad: bool,
+
+        /// Write OOB data alongside main page (NAND only)
+        #[arg(short = 'o', long = "oob")]
+        oob: bool,
+
+        /// Write ONLY OOB data (NAND only)
+        #[arg(short = 'O', long = "oob-only")]
+        oob_only: bool,
     },
 
     /// Erase flash contents
@@ -136,5 +152,13 @@ pub enum Command {
         /// Include blocks even if marked bad (NAND only)
         #[arg(short = 'K', long = "include-bad")]
         include_bad: bool,
+
+        /// Verify OOB data alongside main page (NAND only)
+        #[arg(short = 'o', long = "oob")]
+        oob: bool,
+
+        /// Verify ONLY OOB data (NAND only)
+        #[arg(short = 'O', long = "oob-only")]
+        oob_only: bool,
     },
 }

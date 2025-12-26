@@ -161,8 +161,8 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         while pages_read < total_pages {
             let current_block = current_page / pages_per_block;
 
-            if request.bad_block_strategy != BadBlockStrategy::Include {
-                if self.is_bad_block(current_block)? {
+            if request.bad_block_strategy != BadBlockStrategy::Include
+                && self.is_bad_block(current_block)? {
                     match request.bad_block_strategy {
                         BadBlockStrategy::Skip => {
                             // Skip the entire block
@@ -177,7 +177,6 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                         _ => {}
                     }
                 }
-            }
 
             let chunk = self.read_page_internal(current_page, col_offset, read_len_per_page)?;
 
@@ -210,8 +209,17 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
         let start_page = start_addr / page_size;
         let pages_per_block = self.spec.layout.block_size / page_size;
+        let oob_size = self.spec.layout.oob_size.unwrap_or(0);
+
+        // Calculate write parameters based on OobMode
+        let (col_offset, write_len_per_page) = match request.oob_mode {
+            OobMode::None => (0u16, page_size as usize),
+            OobMode::Included => (0u16, (page_size + oob_size) as usize),
+            OobMode::Only => (page_size as u16, oob_size as usize),
+        };
+
         let data_len = request.data.len();
-        let total_pages = data_len.div_ceil(page_size as usize);
+        let total_pages = data_len.div_ceil(write_len_per_page);
 
         let mut current_page = start_page;
         let mut offset = 0usize;
@@ -220,8 +228,8 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         while pages_written < total_pages {
             let current_block = current_page / pages_per_block;
 
-            if request.bad_block_strategy != BadBlockStrategy::Include {
-                if self.is_bad_block(current_block)? {
+            if request.bad_block_strategy != BadBlockStrategy::Include
+                && self.is_bad_block(current_block)? {
                     match request.bad_block_strategy {
                         BadBlockStrategy::Skip => {
                             // Skip the entire block
@@ -236,16 +244,15 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                         _ => {}
                     }
                 }
-            }
 
-            let chunk_end = (offset + page_size as usize).min(data_len);
-            let mut page_buf = vec![0xFFu8; page_size as usize];
+            let chunk_end = (offset + write_len_per_page).min(data_len);
+            let mut page_buf = vec![0xFFu8; write_len_per_page];
             page_buf[..(chunk_end - offset)].copy_from_slice(&request.data[offset..chunk_end]);
 
             self.write_enable()?;
 
             // Program Load
-            let col_addr = self.column_to_addr(0);
+            let col_addr = self.column_to_addr(col_offset);
             self.programmer.set_cs(true)?;
             self.programmer
                 .spi_write(&[CMD_NAND_PROGRAM_LOAD, col_addr[0], col_addr[1]])?;
@@ -274,7 +281,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
             on_progress(Progress::new(chunk_end as u64, data_len as u64));
 
-            offset += page_size as usize;
+            offset += write_len_per_page;
             pages_written += 1;
             current_page += 1;
         }
@@ -304,8 +311,8 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         let mut current_block = start_block;
 
         while blocks_erased < total_blocks {
-            if request.bad_block_strategy != BadBlockStrategy::Include {
-                if self.is_bad_block(current_block)? {
+            if request.bad_block_strategy != BadBlockStrategy::Include
+                && self.is_bad_block(current_block)? {
                     match request.bad_block_strategy {
                         BadBlockStrategy::Skip => {
                             // Go to next block without incrementing blocks_erased count?
@@ -321,7 +328,6 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                         _ => {}
                     }
                 }
-            }
 
             let page = current_block * (block_size / page_size);
 

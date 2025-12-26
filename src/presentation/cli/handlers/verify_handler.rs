@@ -33,6 +33,7 @@ impl VerifyHandler {
         start: u32,
         disable_ecc: bool,
         strategy: BadBlockStrategy,
+        oob_mode: OobMode,
     ) -> Result<()> {
         let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
@@ -46,7 +47,7 @@ impl VerifyHandler {
             address: start,
             data: &expected_data,
             use_ecc: !disable_ecc,
-            oob_mode: OobMode::None,
+            oob_mode,
             bad_block_strategy: strategy,
         };
 
