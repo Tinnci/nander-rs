@@ -331,11 +331,31 @@ presentation → application → domain
 - [ ] 从旧版芯片数据库迁移所有芯片定义
 
 ### Phase 3: 应用层与表现层 🔶 进行中
-- [ ] 实现 `application/use_cases/detect_chip.rs`
-- [ ] 实现 `application/use_cases/read_flash.rs`
-- [ ] 实现 `application/use_cases/write_flash.rs`
-- [ ] 实现 `application/use_cases/erase_flash.rs`
+
+**Phase 3.1: 应用层用例** ✅ 已完成
+- [x] 实现 `application/use_cases/detect_chip.rs`
+- [x] 实现 `application/use_cases/read_flash.rs`
+- [x] 实现 `application/use_cases/write_flash.rs`
+- [x] 实现 `application/use_cases/erase_flash.rs`
+- [x] 创建参数对象 (ReadParams, WriteParams, EraseParams)
+- [x] 添加使用示例文档 (APPLICATION_USAGE.md)
+
+**Phase 3.2: 表现层 CLI** ⏳ 待实现
 - [ ] 迁移 CLI 处理器到 `presentation/cli/handlers/`
-- [ ] 移除遗留模块
+- [ ] 实现 info_handler
+- [ ] 实现 read_handler
+- [ ] 实现 write_handler
+- [ ] 实现 erase_handler
+- [ ] 实现 verify_handler
+- [ ] 实现 list_handler
+
+**Phase 3.3: 系统切换** ⏳ 待实现
+- [ ] 更新 main.rs 使用新 CLI
+- [ ] 移除遗留模块引用
+
+**Phase 3.4: 清理** ⏳ 待实现
+- [ ] 删除遗留模块
+- [ ] 消除所有警告
+- [ ] 完善文档
 
 
