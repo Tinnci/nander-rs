@@ -109,6 +109,33 @@ erase_use_case.execute(params, |progress| {
 println!("擦除完成");
 ```
 
+## 5. 验证 Flash
+
+```rust
+use nander_rs::application::{VerifyFlashUseCase, VerifyParams};
+
+// 创建验证用例
+let mut verify_use_case = VerifyFlashUseCase::new(flash);
+
+// 准备期望的数据
+let expected_data = vec![0xFF; 2048];
+
+// 设置验证参数
+let params = VerifyParams {
+    address: 0x0,          // 起始地址
+    data: &expected_data,  // 期望数据
+    use_ecc: true,         // 使用 ECC
+    oob_mode: OobMode::None,
+};
+
+// 执行验证
+verify_use_case.execute(params, |progress| {
+    println!("验证进度: {:.1}%", progress.percentage());
+})?;
+
+println!("验证通过");
+```
+
 ## 完整示例
 
 ```rust

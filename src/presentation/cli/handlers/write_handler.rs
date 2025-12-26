@@ -18,6 +18,12 @@ pub struct WriteHandler {
     detect_use_case: DetectChipUseCase,
 }
 
+impl Default for WriteHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WriteHandler {
     pub fn new() -> Self {
         Self {
@@ -32,7 +38,7 @@ impl WriteHandler {
         verify: bool,
         disable_ecc: bool,
     ) -> Result<()> {
-        let (mut programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let data = fs::read(input).map_err(Error::Io)?;
@@ -50,16 +56,16 @@ impl WriteHandler {
         };
 
         match spec.flash_type {
-            FlashType::SpiNand => {
-                let mut protocol = SpiNand::new(programmer, spec);
+            FlashType::Nand => {
+                let protocol = SpiNand::new(programmer, spec);
                 let mut use_case = WriteFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
                 })?
             }
-            FlashType::SpiNor => {
-                let mut protocol = SpiNor::new(programmer, spec);
+            FlashType::Nor => {
+                let protocol = SpiNor::new(programmer, spec);
                 let mut use_case = WriteFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());

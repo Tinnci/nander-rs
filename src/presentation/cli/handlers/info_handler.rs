@@ -10,6 +10,12 @@ pub struct InfoHandler {
     use_case: DetectChipUseCase,
 }
 
+impl Default for InfoHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InfoHandler {
     pub fn new() -> Self {
         Self {

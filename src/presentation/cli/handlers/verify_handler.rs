@@ -1,13 +1,9 @@
-//! CLI Handler - Verify
-//!
-//! Handles the 'verify' command by reading flash contents and comparing with a file.
-
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
 use crate::application::use_cases::detect_chip::DetectChipUseCase;
-use crate::application::use_cases::read_flash::{ReadFlashUseCase, ReadParams};
+use crate::application::use_cases::verify_flash::{VerifyFlashUseCase, VerifyParams};
 use crate::domain::{FlashType, OobMode};
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
@@ -18,6 +14,12 @@ pub struct VerifyHandler {
     detect_use_case: DetectChipUseCase,
 }
 
+impl Default for VerifyHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VerifyHandler {
     pub fn new() -> Self {
         Self {
@@ -26,7 +28,7 @@ impl VerifyHandler {
     }
 
     pub fn handle(&self, input: PathBuf, start: u32, disable_ecc: bool) -> Result<()> {
-        let (mut programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let expected_data = fs::read(input).map_err(Error::Io)?;
@@ -34,25 +36,25 @@ impl VerifyHandler {
 
         println!("Verifying {} bytes starting at 0x{:08X}...", length, start);
 
-        let params = ReadParams {
+        let params = VerifyParams {
             address: start,
-            length,
+            data: &expected_data,
             use_ecc: !disable_ecc,
             oob_mode: OobMode::None,
         };
 
-        let actual_data = match spec.flash_type {
-            FlashType::SpiNand => {
-                let mut protocol = SpiNand::new(programmer, spec);
-                let mut use_case = ReadFlashUseCase::new(protocol);
+        match spec.flash_type {
+            FlashType::Nand => {
+                let protocol = SpiNand::new(programmer, spec);
+                let mut use_case = VerifyFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rReading for verification: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
                 })?
             }
-            FlashType::SpiNor => {
-                let mut protocol = SpiNor::new(programmer, spec);
-                let mut use_case = ReadFlashUseCase::new(protocol);
+            FlashType::Nor => {
+                let protocol = SpiNor::new(programmer, spec);
+                let mut use_case = VerifyFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rReading for verification: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
@@ -60,23 +62,7 @@ impl VerifyHandler {
             }
         };
 
-        println!("\nComparing data...");
-        if actual_data == expected_data {
-            println!("Verification SUCCESSFUL!");
-            Ok(())
-        } else {
-            // Find first discrepancy
-            for (i, (a, e)) in actual_data.iter().zip(expected_data.iter()).enumerate() {
-                if a != e {
-                    return Err(Error::VerificationFailed {
-                        address: start + i as u32,
-                        expected: *e,
-                        actual: *a,
-                    });
-                }
-            }
-            // If we got here but they aren't equal, lengths must differ
-            Err(Error::InvalidParameter("Data lengths differ".to_string()))
-        }
+        println!("\nVerification SUCCESSFUL!");
+        Ok(())
     }
 }

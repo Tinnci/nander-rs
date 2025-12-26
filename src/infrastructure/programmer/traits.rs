@@ -28,3 +28,25 @@ pub trait Programmer {
     /// Control the Chip Select (CS) line
     fn set_cs(&mut self, active: bool) -> Result<()>;
 }
+
+impl Programmer for Box<dyn Programmer> {
+    fn name(&self) -> &str {
+        self.as_ref().name()
+    }
+
+    fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()> {
+        self.as_mut().spi_transfer(tx, rx)
+    }
+
+    fn spi_write(&mut self, data: &[u8]) -> Result<()> {
+        self.as_mut().spi_write(data)
+    }
+
+    fn spi_read(&mut self, len: usize) -> Result<Vec<u8>> {
+        self.as_mut().spi_read(len)
+    }
+
+    fn set_cs(&mut self, active: bool) -> Result<()> {
+        self.as_mut().set_cs(active)
+    }
+}

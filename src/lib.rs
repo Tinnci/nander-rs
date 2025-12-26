@@ -5,38 +5,32 @@
 //!
 //! # Architecture
 //!
-//! The library is organized into several modules:
+//! The library is organized into layered architecture:
 //!
-//! - [`hardware`]: Hardware abstraction layer for different programmers
-//! - [`flash`]: Flash chip protocol implementations (NAND/NOR)
-//! - [`database`]: Chip database with specifications for supported Flash chips
+//! - [`domain`]: Core business logic and types
+//! - [`application`]: Use cases and business rules
+//! - [`infrastructure`]: Technology-specific implementations (Programmers, Database)
+//! - [`presentation`]: User interfaces (CLI)
 //! - [`error`]: Error types and handling
 //!
 //! # Example
 //!
-//! ```no_run
-//! use nander_rs::hardware::ch341a::Ch341a;
-//! use nander_rs::hardware::Programmer;
-//! use nander_rs::flash::FlashOps;
+//! use nander_rs::presentation::cli::args::Args;
+//! use nander_rs::presentation::cli;
+//! use clap::Parser;
 //!
-//! // Discover and open programmer
-//! let mut programmer = Ch341a::open()?;
-//!
-//! // Detect flash chip
-//! let chip_id = programmer.read_jedec_id()?;
-//! println!("Detected chip: {:02X?}", chip_id);
+//! // Parse and execute
+//! let args = Args::parse();
+//! if let Err(e) = cli::execute(args) {
+//!     eprintln!("Error: {}", e);
+//! }
 //! ```
 
 // --- New Layered Architecture ---
 pub mod application;
 pub mod domain;
-pub mod infrastructure;
-
-// --- Legacy Modules (To be phased out) ---
-pub mod cli;
-pub mod database;
 pub mod error;
-pub mod flash;
-pub mod hardware;
+pub mod infrastructure;
+pub mod presentation;
 
 pub use error::{Error, Result};

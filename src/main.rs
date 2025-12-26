@@ -2,17 +2,11 @@
 //!
 //! This is the main entry point for the CLI application.
 
-mod cli;
-mod database;
-mod error;
-mod flash;
-mod hardware;
-
 use anyhow::Result;
 use clap::Parser;
 use log::info;
 
-use cli::Args;
+use nander_rs::presentation::cli::args::Args;
 
 fn main() -> Result<()> {
     // Initialize logging
@@ -23,8 +17,8 @@ fn main() -> Result<()> {
 
     info!("nander-rs v{}", env!("CARGO_PKG_VERSION"));
 
-    // Execute the command
-    cli::execute(args)?;
+    // Execute the command using the new layered architecture
+    nander_rs::presentation::cli::execute(args).map_err(|e| anyhow::anyhow!(e))?;
 
     Ok(())
 }

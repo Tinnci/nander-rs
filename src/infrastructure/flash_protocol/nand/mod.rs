@@ -128,7 +128,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             OobMode::Only => (page_size as u16, oob_size as usize),
         };
 
-        let total_pages = (request.length + page_size - 1) / page_size;
+        let total_pages = request.length.div_ceil(page_size);
         let mut result = Vec::with_capacity(request.length as usize);
         let mut remaining = request.length as usize;
 
@@ -155,7 +155,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         self.set_ecc(request.use_ecc)?;
 
         let start_addr = request.address.as_u32();
-        if start_addr % page_size != 0 {
+        if !start_addr.is_multiple_of(page_size) {
             return Err(Error::InvalidParameter(
                 "NAND write address must be page-aligned".to_string(),
             ));
@@ -163,7 +163,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
         let start_page = start_addr / page_size;
         let data_len = request.data.len();
-        let total_pages = (data_len + page_size as usize - 1) / page_size as usize;
+        let total_pages = data_len.div_ceil(page_size as usize);
 
         for i in 0..total_pages {
             let page = start_page + i as u32;
@@ -217,13 +217,13 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         let page_size = self.spec.layout.page_size;
 
         let start_addr = request.address.as_u32();
-        if start_addr % block_size != 0 {
+        if !start_addr.is_multiple_of(block_size) {
             return Err(Error::InvalidParameter(
                 "NAND erase address must be block-aligned".to_string(),
             ));
         }
 
-        let total_blocks = (request.length + block_size - 1) / block_size;
+        let total_blocks = request.length.div_ceil(block_size);
         let start_block = start_addr / block_size;
 
         for i in 0..total_blocks {

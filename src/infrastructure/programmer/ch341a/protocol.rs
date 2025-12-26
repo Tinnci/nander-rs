@@ -38,7 +38,7 @@ pub const CMD_UIO_STM_US: u8 = 0xC0;
 // ============================================================================
 
 /// SPI clock speed settings
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SpiSpeed {
     /// ~20.8 kHz
     Speed208K = 0,
@@ -51,17 +51,12 @@ pub enum SpiSpeed {
     /// ~1.5 MHz
     Speed1_5M = 4,
     /// ~3 MHz (default, most compatible)
+    #[default]
     Medium = 5,
     /// ~6 MHz
     Speed6M = 6,
     /// ~12 MHz
     Speed12M = 7,
-}
-
-impl Default for SpiSpeed {
-    fn default() -> Self {
-        Self::Medium
-    }
 }
 
 // ============================================================================

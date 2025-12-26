@@ -16,6 +16,12 @@ pub struct EraseHandler {
     detect_use_case: DetectChipUseCase,
 }
 
+impl Default for EraseHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EraseHandler {
     pub fn new() -> Self {
         Self {
@@ -24,10 +30,10 @@ impl EraseHandler {
     }
 
     pub fn handle(&self, start: u32, length: Option<u32>) -> Result<()> {
-        let (mut programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
-        let erase_len = length.unwrap_or(spec.capacity.as_u32() - start);
+        let erase_len = length.unwrap_or(spec.capacity.as_bytes() - start);
 
         let params = EraseParams {
             address: start,
@@ -37,16 +43,16 @@ impl EraseHandler {
         println!("Erasing {} bytes starting at 0x{:08X}...", erase_len, start);
 
         match spec.flash_type {
-            FlashType::SpiNand => {
-                let mut protocol = SpiNand::new(programmer, spec);
+            FlashType::Nand => {
+                let protocol = SpiNand::new(programmer, spec);
                 let mut use_case = EraseFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
                 })?
             }
-            FlashType::SpiNor => {
-                let mut protocol = SpiNor::new(programmer, spec);
+            FlashType::Nor => {
+                let protocol = SpiNor::new(programmer, spec);
                 let mut use_case = EraseFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());

@@ -21,15 +21,9 @@ impl DetectChipUseCase {
         let mut programmer = programmer::discover()?;
 
         // 2. Read JEDEC ID
-        // Note: We need a way to read JEDEC ID that's common or specialized.
-        // For now, let's assume raw SPI transfer.
         programmer.set_cs(true)?;
-        let mut id_raw = [0u8; 3];
         // Standard Read ID command is 0x9F
-        programmer.spi_transfer(&[0x9F, 0x00, 0x00, 0x00], &mut [0u8; 4])?; // Dummy bytes might be needed
-
-        // Wait, different chips have different JEDEC read lengths.
-        // Simplified for now:
+        programmer.spi_write(&[0x9F])?;
         let id_bytes = programmer.spi_read(3)?;
         programmer.set_cs(false)?;
 
@@ -41,5 +35,9 @@ impl DetectChipUseCase {
         })?;
 
         Ok((programmer, spec))
+    }
+
+    pub fn list_supported_chips(&self) -> Vec<ChipSpec> {
+        self.registry.list_all()
     }
 }

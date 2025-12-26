@@ -147,13 +147,13 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
         let block_size = self.spec.layout.block_size;
         let address = request.address.as_u32();
 
-        if address % block_size != 0 {
+        if !address.is_multiple_of(block_size) {
             return Err(Error::InvalidParameter(
                 "NOR erase address must be block-aligned".to_string(),
             ));
         }
 
-        let total_blocks = (request.length + block_size - 1) / block_size;
+        let total_blocks = request.length.div_ceil(block_size);
 
         for i in 0..total_blocks {
             let block_addr = address + (i * block_size);

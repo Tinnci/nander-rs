@@ -58,12 +58,13 @@
 ### Phase 0: 架构重构与结构化迁移 (v0.2.0) ✅ 已完成
 **目标**: 消除 single-file 瓶颈，建立分层架构，清理技术债务。
 
-*   **领域层定义**: ✅ 完善 `src/domain/` 中的核心逻辑抽象。
-*   **基础设施解耦**:
+*   **领域层定义**: ✅ 完善工具集核心逻辑抽象。
+*   **基础设施解耦**: ✅ 
     *   [x] 迁移 `Programmer` trait 至 `infrastructure/programmer`。
     *   [x] 迁移 Flash 协议至 `infrastructure/flash_protocol`。
-*   **应用层解构**: 🔶 为 Read/Write/Erase 创建独立的 `UseCase` 文件 (占位)。
-*   **CLI 处理器拆分**: 🔶 将 `commands.rs` 拆入 `presentation/cli/handlers/` (占位)。
+*   **应用层解构**: ✅ 为所有的 Flash 操作创建了独立的 `UseCase`。
+*   **CLI 处理器拆分**: ✅ 将命令行执行逻辑迁移至 `presentation/cli/handlers/`。
+*   **清理遗留代码**: ✅ 删除了所有旧版冗余模块。
 
 ### Phase 1: 数据库扩展与 NAND 深度功能 (v0.3.0) 🔶 进行中
 **目标**: 基于新架构实现 SNANDer 的完整 NAND 支持。

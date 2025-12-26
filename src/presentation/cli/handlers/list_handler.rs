@@ -10,6 +10,12 @@ pub struct ListHandler {
     use_case: DetectChipUseCase,
 }
 
+impl Default for ListHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ListHandler {
     pub fn new() -> Self {
         Self {

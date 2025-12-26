@@ -18,6 +18,12 @@ pub struct ReadHandler {
     detect_use_case: DetectChipUseCase,
 }
 
+impl Default for ReadHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReadHandler {
     pub fn new() -> Self {
         Self {
@@ -32,10 +38,10 @@ impl ReadHandler {
         length: Option<u32>,
         disable_ecc: bool,
     ) -> Result<()> {
-        let (mut programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute()?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
-        let read_len = length.unwrap_or(spec.capacity.as_u32() - start);
+        let read_len = length.unwrap_or(spec.capacity.as_bytes() - start);
 
         // Prepare parameters
         let params = ReadParams {
@@ -47,17 +53,17 @@ impl ReadHandler {
 
         println!("Reading {} bytes starting at 0x{:08X}...", read_len, start);
 
-        let mut data = match spec.flash_type {
-            FlashType::SpiNand => {
-                let mut protocol = SpiNand::new(programmer, spec);
+        let data = match spec.flash_type {
+            FlashType::Nand => {
+                let protocol = SpiNand::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
                 })?
             }
-            FlashType::SpiNor => {
-                let mut protocol = SpiNor::new(programmer, spec);
+            FlashType::Nor => {
+                let protocol = SpiNor::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
                     print!("\rProgress: {:.1}%", progress.percentage());

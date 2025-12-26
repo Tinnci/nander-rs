@@ -2,22 +2,25 @@
 //!
 //! Entry point for the CLI presentation layer.
 
-use crate::cli::args::{self, Args};
+pub mod args;
+pub mod handlers;
+
 use crate::error::Result;
+use args::{Args, Command};
 use handlers::*;
 
 /// Execute the command specified by CLI arguments using the new architecture
 pub fn execute(args: Args) -> Result<()> {
     match args.command {
-        args::Command::Info => {
+        Command::Info => {
             let handler = InfoHandler::new();
             handler.handle()
         }
-        args::Command::List => {
+        Command::List => {
             let handler = ListHandler::new();
             handler.handle()
         }
-        args::Command::Read {
+        Command::Read {
             output,
             length,
             start,
@@ -26,7 +29,7 @@ pub fn execute(args: Args) -> Result<()> {
             let handler = ReadHandler::new();
             handler.handle(output, start, length, disable_ecc)
         }
-        args::Command::Write {
+        Command::Write {
             input,
             start,
             verify,
@@ -35,7 +38,7 @@ pub fn execute(args: Args) -> Result<()> {
             let handler = WriteHandler::new();
             handler.handle(input, start, verify, disable_ecc)
         }
-        args::Command::Erase {
+        Command::Erase {
             length,
             start,
             disable_ecc: _, // Erase handler currently doesn't use ECC
@@ -43,7 +46,7 @@ pub fn execute(args: Args) -> Result<()> {
             let handler = EraseHandler::new();
             handler.handle(start, length)
         }
-        args::Command::Verify {
+        Command::Verify {
             input,
             start,
             disable_ecc,

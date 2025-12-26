@@ -330,7 +330,7 @@ presentation → application → domain
 - [x] 实现进度报告回调
 - [ ] 从旧版芯片数据库迁移所有芯片定义
 
-### Phase 3: 应用层与表现层 🔶 进行中
+### Phase 3: 应用层与表现层 ✅ 已完成
 
 **Phase 3.1: 应用层用例** ✅ 已完成
 - [x] 实现 `application/use_cases/detect_chip.rs`
@@ -340,22 +340,22 @@ presentation → application → domain
 - [x] 创建参数对象 (ReadParams, WriteParams, EraseParams)
 - [x] 添加使用示例文档 (APPLICATION_USAGE.md)
 
-**Phase 3.2: 表现层 CLI** ⏳ 待实现
-- [ ] 迁移 CLI 处理器到 `presentation/cli/handlers/`
-- [ ] 实现 info_handler
-- [ ] 实现 read_handler
-- [ ] 实现 write_handler
-- [ ] 实现 erase_handler
-- [ ] 实现 verify_handler
-- [ ] 实现 list_handler
+**Phase 3.2: 表现层 CLI** ✅ 已完成
+- [x] 迁移 CLI 处理器到 `presentation/cli/handlers/`
+- [x] 实现 info_handler
+- [x] 实现 read_handler
+- [x] 实现 write_handler
+- [x] 实现 erase_handler
+- [x] 实现 verify_handler
+- [x] 实现 list_handler
 
-**Phase 3.3: 系统切换** ⏳ 待实现
-- [ ] 更新 main.rs 使用新 CLI
-- [ ] 移除遗留模块引用
+**Phase 3.3: 系统切换** ✅ 已完成
+- [x] 更新 main.rs 使用新 CLI
+- [x] 移除遗留模块引用
 
-**Phase 3.4: 清理** ⏳ 待实现
-- [ ] 删除遗留模块
-- [ ] 消除所有警告
-- [ ] 完善文档
+**Phase 3.4: 清理** ✅ 已完成
+- [x] 删除遗留模块
+- [x] 消除所有警告
+- [x] 完善文档
 
 

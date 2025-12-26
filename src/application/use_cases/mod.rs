@@ -5,6 +5,7 @@
 pub mod detect_chip;
 pub mod erase_flash;
 pub mod read_flash;
+pub mod verify_flash;
 pub mod write_flash;
 
 // Re-export use cases
