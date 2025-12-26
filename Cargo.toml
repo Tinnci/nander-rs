@@ -1,0 +1,43 @@
+[package]
+name = "nander-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A modern SPI NAND/NOR Flash programmer written in Rust, primarily for CH341A"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tinnci/nander-rs"
+keywords = ["flash", "spi", "nand", "programmer", "ch341a"]
+categories = ["embedded", "hardware-support", "command-line-utilities"]
+
+[dependencies]
+# USB communication (pure Rust, no libusb needed)
+nusb = "0.1"
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Progress bar
+indicatif = "0.17"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Async runtime (for nusb)
+futures-lite = "2"
+
+# Hex encoding for debugging
+hex = "0.4"
+
+[[bin]]
+name = "nander"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

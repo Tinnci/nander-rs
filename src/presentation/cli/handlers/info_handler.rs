@@ -1,0 +1,48 @@
+//! CLI Handler - Info
+//!
+//! Handles the 'info' command by invoking the detect chip use case.
+
+use crate::application::use_cases::detect_chip::DetectChipUseCase;
+use crate::error::Result;
+use crate::infrastructure::chip_database::ChipRegistry;
+
+pub struct InfoHandler {
+    use_case: DetectChipUseCase,
+}
+
+impl InfoHandler {
+    pub fn new() -> Self {
+        Self {
+            use_case: DetectChipUseCase::new(ChipRegistry::new()),
+        }
+    }
+
+    pub fn handle(&self) -> Result<()> {
+        println!("Detecting flash chip...");
+
+        match self.use_case.execute() {
+            Ok((programmer, spec)) => {
+                println!("Programmer: {}", programmer.name());
+                println!("----------------------------------");
+                println!("Manufacturer: {}", spec.manufacturer);
+                println!("Model:        {}", spec.name);
+                println!("Type:         {}", spec.flash_type);
+                println!("Capacity:     {}", spec.capacity);
+                println!("ID:           {}", spec.jedec_id);
+
+                if let Some(oob) = spec.layout.oob_size {
+                    println!("Page Size:    {} + {} OOB", spec.layout.page_size, oob);
+                } else {
+                    println!("Page Size:    {}", spec.layout.page_size);
+                }
+
+                println!("Block Size:   {}", spec.layout.block_size);
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("Error detecting chip: {}", e);
+                Err(e)
+            }
+        }
+    }
+}
