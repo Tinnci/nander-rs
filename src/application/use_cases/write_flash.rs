@@ -1,0 +1,41 @@
+//! Write Flash Use Case
+//!
+//! Orchestrates writing data to flash memory.
+
+use crate::domain::{Address, FlashOperation, Progress, WriteRequest};
+use crate::error::Result;
+
+/// Parameters for write operation
+pub struct WriteParams<'a> {
+    pub address: u32,
+    pub data: &'a [u8],
+    pub use_ecc: bool,
+    pub verify: bool,
+}
+
+/// Use case for writing data to flash
+pub struct WriteFlashUseCase<F: FlashOperation> {
+    flash: F,
+}
+
+impl<F: FlashOperation> WriteFlashUseCase<F> {
+    /// Create a new write flash use case
+    pub fn new(flash: F) -> Self {
+        Self { flash }
+    }
+
+    /// Execute the write operation
+    pub fn execute<P>(&mut self, params: WriteParams, on_progress: P) -> Result<()>
+    where
+        P: Fn(Progress),
+    {
+        let request = WriteRequest {
+            address: Address::new(params.address),
+            data: params.data,
+            use_ecc: params.use_ecc,
+            verify: params.verify,
+        };
+
+        self.flash.write(request, &on_progress)
+    }
+}

@@ -1,0 +1,41 @@
+//! Read Flash Use Case
+//!
+//! Orchestrates reading data from flash memory.
+
+use crate::domain::{Address, FlashOperation, OobMode, Progress, ReadRequest};
+use crate::error::Result;
+
+/// Parameters for read operation
+pub struct ReadParams {
+    pub address: u32,
+    pub length: u32,
+    pub use_ecc: bool,
+    pub oob_mode: OobMode,
+}
+
+/// Use case for reading data from flash
+pub struct ReadFlashUseCase<F: FlashOperation> {
+    flash: F,
+}
+
+impl<F: FlashOperation> ReadFlashUseCase<F> {
+    /// Create a new read flash use case
+    pub fn new(flash: F) -> Self {
+        Self { flash }
+    }
+
+    /// Execute the read operation
+    pub fn execute<P>(&mut self, params: ReadParams, on_progress: P) -> Result<Vec<u8>>
+    where
+        P: Fn(Progress),
+    {
+        let request = ReadRequest {
+            address: Address::new(params.address),
+            length: params.length,
+            use_ecc: params.use_ecc,
+            oob_mode: params.oob_mode,
+        };
+
+        self.flash.read(request, &on_progress)
+    }
+}
