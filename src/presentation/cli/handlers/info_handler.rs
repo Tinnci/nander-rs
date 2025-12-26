@@ -22,7 +22,7 @@ impl InfoHandler {
 
         match self.use_case.execute() {
             Ok((programmer, spec)) => {
-                println!("Programmer: {}", programmer.name());
+                println!("Programmer:   {}", programmer.name());
                 println!("----------------------------------");
                 println!("Manufacturer: {}", spec.manufacturer);
                 println!("Model:        {}", spec.name);
