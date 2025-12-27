@@ -73,17 +73,31 @@ impl SpiSpeed {
 // ============================================================================
 
 /// Build command to configure SPI settings
+///
+/// Protocol Config Structure (Total 26 bytes payload + header):
+/// Header: [0xC0, 0x1A, 0x00] (Command + Length)
+/// Payload:
+/// - Byte 9 (Payload[6]): Clock Polarity (Bit 1). 0=Low, 1=High
+/// - Byte 11 (Payload[8]): Clock Phase (Bit 0). 0=First Edge, 1=Second Edge
+/// - Byte 15 (Payload[12]): Clock Divisor (Bits 5:3). Values 0-7.
+/// - Byte 17 (Payload[14]): Byte Order (Bit 7). 0=MSB First, 1=LSB First.
 pub fn build_set_cfg_cmd(speed: SpiSpeed) -> Vec<u8> {
-    let mut cfg = vec![0u8; 26];
+    let mut cfg = vec![0u8; 26]; // 26 bytes payload
 
-    // Value mapping for iClock (Index 5)
-    cfg[5] = speed as u8;
+    // 1. SPI Mode 0 (CPOL=0, CPHA=0)
+    // Byte 9 (Payload 6): Clock Polarity (CPOL)
+    cfg[6] = 0x00;
+    // Byte 11 (Payload 8): Clock Phase (CPHA)
+    cfg[8] = 0x00;
 
-    // Mode (Index 1): SPI Mode 0 as default
-    cfg[1] = 0;
+    // 2. SPI Speed
+    // Byte 15 (Payload 12): Clock divisor (bits 5:3)
+    // Map speed enum to divisor value
+    cfg[12] = (speed as u8) << 3;
 
-    // Byte Order (Index 7): 1 = MSB First
-    cfg[7] = 1;
+    // 3. Byte Order
+    // Byte 17 (Payload 14): Bit 7 defines order. 0 = MSB First, 1 = LSB First.
+    cfg[14] = 0x00; // MSB First
 
     let len = cfg.len();
     let mut packet = Vec::with_capacity(3 + len);
@@ -95,10 +109,32 @@ pub fn build_set_cfg_cmd(speed: SpiSpeed) -> Vec<u8> {
 }
 
 /// Build command for CS control
+///
+/// Protocol CS Structure (Total 10 bytes payload + header):
+/// Header: [0xC1, 0x0A, 0x00] (Command + Length)
+/// Payload:
+/// - Byte 3 (Payload[0]): CS1 Control
+///     - Bit 7: Mask (1=Update, 0=Ignore)
+///     - Bit 6: Value (1=High/Inactive, 0=Low/Active)
+/// - Byte 8 (Payload[5]): CS2 Control (Not used here, but supported)
 pub fn build_cs_cmd(active: bool) -> Vec<u8> {
-    // Usually 0 for active (low), 1 for inactive (high).
-    let cs_level = if active { 0 } else { 1 };
-    vec![CMD_SPI_CONTROL, 1, 0, cs_level]
+    let mut payload = vec![0u8; 10]; // Length 10
+
+    // Byte 3 (Payload 0): CS1
+    // Bit 7: Mask (1=Change)
+    // Bit 6: Value (0=Assert/Low, 1=Deassert/High)
+    let val_bit = if active { 0 } else { 1 };
+
+    // Construct CS1 byte: Mask(0x80) | (Value << 6)
+    payload[0] = 0x80 | (val_bit << 6);
+
+    let len = payload.len();
+    let mut packet = Vec::with_capacity(3 + len);
+    packet.push(CMD_SPI_CONTROL);
+    packet.push((len & 0xFF) as u8);
+    packet.push(((len >> 8) & 0xFF) as u8);
+    packet.extend_from_slice(&payload);
+    packet
 }
 
 /// Build command for SPI read/write transfer
