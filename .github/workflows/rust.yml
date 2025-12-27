@@ -1,32 +1,38 @@
-name: Rust CI
+name: CI
 
 on:
   push:
     branches: [ "main", "master" ]
-    paths:
-      - '**.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/rust.yml'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches: [ "main", "master" ]
-    paths:
-      - '**.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/rust.yml'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build & Test
-    runs-on: ubuntu-latest
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libudev-dev pkg-config
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -45,6 +51,7 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Check formatting
+      if: runner.os == 'Linux' # Only check fmt once
       run: cargo fmt -- --check
 
     - name: Run clippy
@@ -53,5 +60,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
-    - name: Build release
+    - name: Build release (Check)
       run: cargo build --release --verbose
+
