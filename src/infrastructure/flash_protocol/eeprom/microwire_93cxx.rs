@@ -188,11 +188,12 @@ impl<P: Programmer> FlashOperation for MicrowireEeprom<P> {
         let write_req = WriteRequest {
             address: request.address,
             data: &fill_data,
-            use_ecc: false,
             verify: false,
-            ignore_ecc_errors: true,
-            bad_block_strategy: BadBlockStrategy::Fail,
+            use_ecc: false,
+            ignore_ecc_errors: false,
             oob_mode: OobMode::None,
+            bad_block_strategy: BadBlockStrategy::Fail,
+            bbt: None,
         };
         self.write(write_req, on_progress)
     }

@@ -15,6 +15,10 @@ pub struct ReadRequest {
     pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
+    /// Pre-scanned Bad Block Table (optional)
+    pub bbt: Option<BadBlockTable>,
+    /// Number of retries for read operations
+    pub retry_count: u32,
 }
 
 /// How to handle Out Of Band data
@@ -38,6 +42,8 @@ pub struct WriteRequest<'a> {
     pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
+    /// Pre-scanned Bad Block Table (optional)
+    pub bbt: Option<BadBlockTable>,
 }
 
 /// Request for an erase operation
@@ -45,6 +51,8 @@ pub struct EraseRequest {
     pub address: Address,
     pub length: u32,
     pub bad_block_strategy: BadBlockStrategy,
+    /// Pre-scanned Bad Block Table (optional)
+    pub bbt: Option<BadBlockTable>,
 }
 
 /// Service Trait for Flash Operations

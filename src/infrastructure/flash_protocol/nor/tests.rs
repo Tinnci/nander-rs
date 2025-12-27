@@ -53,6 +53,8 @@ fn test_nor_read_basic() {
         ignore_ecc_errors: false,
         oob_mode: OobMode::None,
         bad_block_strategy: BadBlockStrategy::Fail,
+        bbt: None,
+        retry_count: 0,
     };
 
     // Execute read
@@ -84,6 +86,8 @@ fn test_nor_read_progress_callback() {
         ignore_ecc_errors: false,
         oob_mode: OobMode::None,
         bad_block_strategy: BadBlockStrategy::Fail,
+        bbt: None,
+        retry_count: 0,
     };
 
     // Track progress calls using RefCell for interior mutability

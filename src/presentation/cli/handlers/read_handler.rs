@@ -47,6 +47,7 @@ impl ReadHandler {
             ignore_ecc_errors: options.ignore_ecc_errors,
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
+            bbt: None,
         };
 
         println!("Reading {} bytes starting at 0x{:08X}...", read_len, start);

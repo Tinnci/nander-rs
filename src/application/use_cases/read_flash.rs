@@ -2,7 +2,10 @@
 //!
 //! Orchestrates reading data from flash memory.
 
-use crate::domain::{Address, BadBlockStrategy, FlashOperation, OobMode, Progress, ReadRequest};
+use crate::domain::{
+    bad_block::BadBlockTable, Address, BadBlockStrategy, FlashOperation, OobMode, Progress,
+    ReadRequest,
+};
 use crate::error::Result;
 
 /// Parameters for read operation
@@ -14,6 +17,7 @@ pub struct ReadParams {
     pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
+    pub bbt: Option<BadBlockTable>,
 }
 
 /// Use case for reading data from flash
@@ -39,6 +43,8 @@ impl<F: FlashOperation> ReadFlashUseCase<F> {
             ignore_ecc_errors: params.ignore_ecc_errors,
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
+            bbt: params.bbt,
+            retry_count: 0,
         };
 
         self.flash.read(request, &on_progress)

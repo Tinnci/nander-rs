@@ -8,10 +8,7 @@ mod tests;
 use std::time::{Duration, Instant};
 
 use crate::domain::chip::ChipSpec;
-use crate::domain::{
-    bad_block::BadBlockStrategy, EraseRequest, FlashOperation, OobMode, Progress, ReadRequest,
-    WriteRequest,
-};
+use crate::domain::{EraseRequest, FlashOperation, Progress, ReadRequest, WriteRequest};
 use crate::error::{Error, Result};
 use crate::infrastructure::flash_protocol::commands::*;
 use crate::infrastructure::programmer::Programmer;
@@ -192,8 +189,10 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
                 length: request.data.len() as u32,
                 use_ecc: request.use_ecc,
                 ignore_ecc_errors: request.ignore_ecc_errors,
-                oob_mode: OobMode::None,
-                bad_block_strategy: BadBlockStrategy::Fail,
+                oob_mode: request.oob_mode,
+                bad_block_strategy: request.bad_block_strategy,
+                bbt: None,
+                retry_count: 0,
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {

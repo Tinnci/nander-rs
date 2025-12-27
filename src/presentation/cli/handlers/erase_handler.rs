@@ -39,6 +39,7 @@ impl EraseHandler {
             address: start,
             length: erase_len,
             bad_block_strategy: options.bad_block_strategy,
+            bbt: None,
         };
 
         println!("Erasing {} bytes starting at 0x{:08X}...", erase_len, start);

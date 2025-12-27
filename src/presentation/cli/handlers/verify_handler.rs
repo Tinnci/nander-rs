@@ -43,6 +43,7 @@ impl VerifyHandler {
             ignore_ecc_errors: options.ignore_ecc_errors,
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
+            bbt: None,
         };
 
         let pb = super::create_progress_bar(length as u64, "Verifying");

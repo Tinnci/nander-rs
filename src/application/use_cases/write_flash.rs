@@ -2,7 +2,10 @@
 //!
 //! Orchestrates writing data to flash memory.
 
-use crate::domain::{Address, BadBlockStrategy, FlashOperation, OobMode, Progress, WriteRequest};
+use crate::domain::{
+    bad_block::BadBlockTable, Address, BadBlockStrategy, FlashOperation, OobMode, Progress,
+    WriteRequest,
+};
 use crate::error::Result;
 
 /// Parameters for write operation
@@ -11,10 +14,11 @@ pub struct WriteParams<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub verify: bool,
-    /// Ignore ECC errors during verification read back
+    /// Ignore ECC errors during verify (for data recovery)
     pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
+    pub bbt: Option<BadBlockTable>,
 }
 
 /// Use case for writing data to flash
@@ -41,6 +45,7 @@ impl<F: FlashOperation> WriteFlashUseCase<F> {
             ignore_ecc_errors: params.ignore_ecc_errors,
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
+            bbt: params.bbt,
         };
 
         self.flash.write(request, &on_progress)

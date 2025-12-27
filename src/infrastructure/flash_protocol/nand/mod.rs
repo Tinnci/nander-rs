@@ -193,9 +193,17 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         while pages_read < total_pages {
             let current_block = current_page / pages_per_block;
 
-            if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)?
-            {
+            let is_bad = if let Some(ref bbt) = request.bbt {
+                match bbt.get_status(current_block as usize) {
+                    BlockStatus::Unknown => self.is_bad_block(current_block)?,
+                    BlockStatus::BadFactory | BlockStatus::BadRuntime => true,
+                    BlockStatus::Good => false,
+                }
+            } else {
+                self.is_bad_block(current_block)?
+            };
+
+            if request.bad_block_strategy != BadBlockStrategy::Include && is_bad {
                 match request.bad_block_strategy {
                     BadBlockStrategy::Skip => {
                         // Skip the entire block
@@ -271,9 +279,17 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         while pages_written < total_pages {
             let current_block = current_page / pages_per_block;
 
-            if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)?
-            {
+            let is_bad = if let Some(ref bbt) = request.bbt {
+                match bbt.get_status(current_block as usize) {
+                    BlockStatus::Unknown => self.is_bad_block(current_block)?,
+                    BlockStatus::BadFactory | BlockStatus::BadRuntime => true,
+                    BlockStatus::Good => false,
+                }
+            } else {
+                self.is_bad_block(current_block)?
+            };
+
+            if request.bad_block_strategy != BadBlockStrategy::Include && is_bad {
                 match request.bad_block_strategy {
                     BadBlockStrategy::Skip => {
                         // Skip the entire block
@@ -339,6 +355,8 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                 ignore_ecc_errors: request.ignore_ecc_errors,
                 oob_mode: request.oob_mode,
                 bad_block_strategy: request.bad_block_strategy,
+                bbt: request.bbt.clone(),
+                retry_count: 0,
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {
@@ -371,9 +389,17 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         let mut current_block = start_block;
 
         while blocks_erased < total_blocks {
-            if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)?
-            {
+            let is_bad = if let Some(ref bbt) = request.bbt {
+                match bbt.get_status(current_block as usize) {
+                    BlockStatus::Unknown => self.is_bad_block(current_block)?,
+                    BlockStatus::BadFactory | BlockStatus::BadRuntime => true,
+                    BlockStatus::Good => false,
+                }
+            } else {
+                self.is_bad_block(current_block)?
+            };
+
+            if request.bad_block_strategy != BadBlockStrategy::Include && is_bad {
                 match request.bad_block_strategy {
                     BadBlockStrategy::Skip => {
                         // Go to next block without incrementing blocks_erased count?
