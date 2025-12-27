@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2025-12-27
 
 ### Added
+- **CH347 High-Speed Programmer Support**
+  - Full support for CH347 (Mode 1) with SPI speeds up to 60MHz
+  - Automatic identification of CH347 series
+  - Optimized USB communication packet builders for CH347
+- **Automated Batch Programming Mode**
+  - New `batch` command for sequential flash operations
+  - Support for JSON and TOML batch scripts
+  - Built-in templates for common workflows (`flash-update`, `production`)
+  - Integration with all supported flash types (NAND, NOR, EEPROM)
+  - Automatic delay and retry logic in automated flows
 - **Cross-platform GUI** using `egui` framework
   - Real-time hex viewer with virtual scrolling for large files
   - Drag-and-drop file support for easy firmware loading

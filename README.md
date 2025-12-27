@@ -15,10 +15,10 @@ A complete rewrite of [SNANDer](https://github.com/McMCCRU/SNANDer) in Rust, des
 - 📦 **Single binary** - No runtime dependencies
 - 🛡️ **Memory safe** - Rust's ownership system
 - 🎨 **GUI & CLI** - Graphical and command-line interfaces
-- 🔧 **Extensible** - Trait-based architecture
+- ⚡ **High Speed** - Support for 60MHz SPI (CH347)
+- 🤖 **Batch Mode** - Automate workflows with simple scripts
 
 ## 📦 Installation
-
 ```bash
 cargo install nander-rs
 ```
@@ -29,14 +29,14 @@ cargo install nander-rs
 # Test programmer connection
 nander diagnostic
 
+# Run automated batch operation (Erase -> Write -> Verify)
+nander batch --template flash-update --firmware firmware.bin
+
 # Detect flash chip
 nander info
 
 # Read flash
 nander read -o backup.bin
-
-# Write flash
-nander write -i firmware.bin
 
 # Launch GUI
 nander gui
@@ -57,7 +57,8 @@ nander gui
 ## 🛠 Supported Hardware
 
 ### Programmers
-- **CH341A** - USB SPI programmer (fully supported)
+- **CH341A** - USB SPI programmer (Standard)
+- **CH347** - High-speed USB SPI programmer (up to 60MHz)
 
 ### Flash Types
 - **SPI NAND** - With OOB and bad block management
