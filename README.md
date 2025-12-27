@@ -42,6 +42,8 @@ nander write -i firmware.bin
 nander gui
 ```
 
+![nander-rs GUI](docs/images/gui-screenshot.png)
+
 ## 📖 Documentation
 
 | English | 中文 |
