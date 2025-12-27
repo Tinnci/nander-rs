@@ -161,6 +161,23 @@ pub fn execute(args: Args) -> Result<()> {
                 args::BbtCommand::Load { input } => handler.handle_load(input),
             }
         }
+        Command::Diagnostic { interactive } => {
+            use crate::application::DiagnosticTool;
+            use crate::infrastructure::programmer;
+
+            // Discover programmer (doesn't need chip detection)
+            let mut prog = programmer::discover()?;
+            if let Some(speed) = Some(args.spi_speed) {
+                prog.set_speed(speed)?;
+            }
+
+            if interactive {
+                DiagnosticTool::interactive_spi_test(prog.as_mut())?;
+            } else {
+                DiagnosticTool::run_diagnostics(prog.as_mut())?;
+            }
+            Ok(())
+        }
         Command::Gui => {
             crate::presentation::gui::run().map_err(|e| crate::error::Error::Other(e.to_string()))
         }

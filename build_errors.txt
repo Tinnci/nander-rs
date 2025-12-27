@@ -1,0 +1,43 @@
+   Compiling nander-rs v0.4.0 (C:\Users\shiso\Downloads\nander\nander-rs)
+error[E0107]: type alias takes 1 generic argument but 2 generic arguments were supplied
+   --> src\application\diagnostics.rs:174:24
+    |
+174 |             let bytes: Result<Vec<u8>, _> = input
+    |                        ^^^^^^        --- help: remove the unnecessary generic argument
+    |                        |
+    |                        expected 1 generic argument
+    |
+note: type alias defined here, with 1 generic parameter: `T`
+   --> src\error.rs:8:10
+    |
+  8 | pub type Result<T> = std::result::Result<T, Error>;
+    |          ^^^^^^ -
+
+error[E0277]: a value of type `std::result::Result<std::vec::Vec<u8>, error::Error>` cannot be built from an iterator over elements of type `std::result::Result<u8, ParseIntError>`
+    --> src\application\diagnostics.rs:177:18
+     |
+ 177 |                 .collect();
+     |                  ^^^^^^^ value of type `std::result::Result<std::vec::Vec<u8>, error::Error>` cannot be built from `std::iter::Iterator<Item=std::result::Result<u8, ParseIntError>>`
+     |
+     = help: the trait `FromIterator<std::result::Result<_, ParseIntError>>` is not implemented for `std::result::Result<std::vec::Vec<u8>, error::Error>`
+             but trait `FromIterator<std::result::Result<_, error::Error>>` is implemented for it
+     = help: for that trait implementation, expected `error::Error`, found `ParseIntError`
+note: the method call chain might not have had the expected associated types
+    --> src\application\diagnostics.rs:176:18
+     |
+ 165 |             let mut input = String::new();
+     |                             ------------- this expression has type `String`
+...
+ 175 |                 .split_whitespace()
+     |                  ------------------ `Iterator::Item` is `&str` here
+ 176 |                 .map(|s| u8::from_str_radix(s, 16))
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Iterator::Item` changed to `Result<u8, ParseIntError>` here
+note: required by a bound in `std::iter::Iterator::collect`
+    --> C:\Users\shiso\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\core\src\iter\traits\iterator.rs:2014:19
+     |
+2014 |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.
+error: could not compile `nander-rs` (lib) due to 2 previous errors
