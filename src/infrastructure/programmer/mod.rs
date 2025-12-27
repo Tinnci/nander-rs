@@ -3,6 +3,7 @@
 //! This module handles programmer discovery and abstraction.
 
 pub mod ch341a;
+pub mod ch347;
 pub mod device_database;
 pub mod simulator;
 pub mod traits;
@@ -11,6 +12,7 @@ pub mod traits;
 pub mod mock;
 
 pub use ch341a::Ch341a;
+pub use ch347::Ch347;
 pub use device_database::{DeviceCompatibility, DeviceInfo, WchDeviceDatabase};
 pub use traits::Programmer;
 
@@ -21,19 +23,31 @@ use log::debug;
 pub fn discover() -> Result<Box<dyn Programmer>> {
     debug!("Starting programmer discovery...");
 
-    // Try CH341A
-    if let Ok(device) = find_ch341a() {
-        debug!("Found CH341A programmer");
-        let p = Ch341a::new(device)?;
-        return Ok(Box::new(p));
+    // Find a supported USB device (returns DeviceInfo and its PID)
+    let (device_info, pid) = find_supported_device()?;
+
+    // Open the device
+    let device = device_info
+        .open()
+        .map_err(|e| Error::Other(format!("Failed to open device: {}", e)))?;
+
+    // Create appropriate programmer based on PID
+    match pid {
+        0x5512 => {
+            debug!("Initializing CH341A programmer");
+            let p = Ch341a::new(device)?;
+            Ok(Box::new(p))
+        }
+        0x55DB => {
+            debug!("Initializing CH347 programmer (High-Speed)");
+            let p = Ch347::new(device)?;
+            Ok(Box::new(p))
+        }
+        _ => Err(Error::ProgrammerNotFound),
     }
-
-    // Add other programmers here...
-
-    Err(Error::ProgrammerNotFound)
 }
 
-fn find_ch341a() -> Result<nusb::Device> {
+fn find_supported_device() -> Result<(nusb::DeviceInfo, u16)> {
     use device_database::WchDeviceDatabase;
 
     // Scan all USB devices
@@ -55,8 +69,8 @@ fn find_ch341a() -> Result<nusb::Device> {
 
     if !wch_devices.is_empty() {
         debug!("Found {} WCH device(s):", wch_devices.len());
-        for (_device, info) in &wch_devices {
-            debug!("  {}", info);
+        for (device, info) in &wch_devices {
+            debug!("  {} (PID: 0x{:04X})", info, device.product_id());
             if let Some(help) = info.help_message {
                 // Print help message indented
                 for line in help.lines() {
@@ -66,60 +80,18 @@ fn find_ch341a() -> Result<nusb::Device> {
         }
     } else {
         debug!("No WCH devices found on this system");
-        debug!("Supported devices: CH341A (VID:PID = 1A86:5512)");
+        debug!("Supported devices: CH341A (1A86:5512), CH347 (1A86:55DB)");
     }
 
     // Look for a supported programmer
     let supported_device = wch_devices
         .into_iter()
-        .find(|(_, info)| info.compatibility == device_database::DeviceCompatibility::Supported);
+        .find(|(_, info)| info.compatibility == DeviceCompatibility::Supported);
 
     match supported_device {
         Some((device, info)) => {
             debug!("✓ Using: {}", info.name);
-            match device.open() {
-                Ok(d) => Ok(d),
-                Err(e) => {
-                    // Enhanced error message for common Windows driver issues
-                    let error_str = e.to_string();
-
-                    let enhanced_msg = if error_str.contains("CH341")
-                        || error_str.contains("driver")
-                    {
-                        format!(
-                            "Device found but cannot connect: {}\n\n\
-                            ⚠ DRIVER ISSUE DETECTED\n\
-                            Your CH341A is using an incompatible driver (likely 'CH341_A64' or similar).\n\n\
-                            SOLUTION - Install WinUSB Driver:\n\
-                            1. Download Zadig: https://zadig.akeo.ie/\n\
-                            2. Run Zadig as Administrator\n\
-                            3. Options → List All Devices ✓\n\
-                            4. Select 'USB-SERIAL CH341A' or 'Interface 0' from dropdown\n\
-                            5. Driver box should show current driver (e.g., CH341_A64)\n\
-                            6. Click the arrows to select 'WinUSB' as replacement driver\n\
-                            7. Click 'Replace Driver' or 'Install Driver'\n\
-                            8. Wait for completion, then replug your device\n\n\
-                            After driver replacement, nander-rs will work correctly.\n\
-                            Note: This won't break other CH341 software - you can switch back anytime.",
-                            e
-                        )
-                    } else if error_str.contains("Access") || error_str.contains("denied") {
-                        format!(
-                            "Device found but access denied: {}\n\n\
-                            SOLUTIONS:\n\
-                            1. Run as Administrator (Windows)\n\
-                            2. Check if another program is using the device\n\
-                            3. Try a different USB port\n\
-                            4. Restart your computer",
-                            e
-                        )
-                    } else {
-                        format!("Failed to open device: {}", e)
-                    };
-
-                    Err(Error::Other(enhanced_msg))
-                }
-            }
+            Ok((device.clone(), device.product_id()))
         }
         None => {
             // Build detailed error message
@@ -132,14 +104,14 @@ fn find_ch341a() -> Result<nusb::Device> {
                     .count();
 
                 if wch_count > 0 {
-                    "WCH device(s) found, but none in supported mode.\n\
+                    "WCH device(s) found, but none in supported mode.\\n\\\
                     Check the debug log above for device details and troubleshooting steps."
                         .to_string()
                 } else {
                     format!(
-                        "No WCH programmer detected.\n\
-                        Found {} other USB device(s), but none are CH341A programmers.\n\
-                        Please connect a CH341A device in SPI mode (PID 0x5512).",
+                        "No WCH programmer detected.\\n\\\
+                        Found {} other USB device(s), but none are supported programmers.\\n\\\
+                        Please connect a CH341A (1A86:5512) or CH347 (1A86:55DB) device.",
                         all_devices.len()
                     )
                 }

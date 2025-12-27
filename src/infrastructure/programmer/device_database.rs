@@ -132,11 +132,9 @@ impl WchDeviceDatabase {
                 id: UsbDeviceId::new(vid, pid),
                 name: "CH347",
                 description: "USB to UART/I2C/SPI Bridge (High-Speed)",
-                compatibility: DeviceCompatibility::PlannedSupport,
+                compatibility: DeviceCompatibility::Supported,
                 help_message: Some(
-                    "CH347 support is planned for future releases.\n\
-                    This chip offers faster speeds than CH341A (up to 60MHz SPI).\n\
-                    Star our GitHub repo to get notified of updates!"
+                    "High-speed SPI bridge (up to 60MHz). This is the correct mode for flash programming!"
                 ),
             },
 
@@ -196,7 +194,7 @@ impl WchDeviceDatabase {
     pub fn supported_programmers() -> Vec<UsbDeviceId> {
         vec![
             UsbDeviceId::new(Self::WCH_VID, 0x5512), // CH341A SPI Mode
-                                                     // Future: CH347, etc.
+            UsbDeviceId::new(Self::WCH_VID, 0x55DB), // CH347 SPI Mode
         ]
     }
 }
@@ -234,9 +232,9 @@ mod tests {
     }
 
     #[test]
-    fn test_ch347_planned() {
+    fn test_ch347_supported() {
         let info = WchDeviceDatabase::identify(0x1A86, 0x55DB);
-        assert_eq!(info.compatibility, DeviceCompatibility::PlannedSupport);
+        assert_eq!(info.compatibility, DeviceCompatibility::Supported);
         assert_eq!(info.name, "CH347");
     }
 
