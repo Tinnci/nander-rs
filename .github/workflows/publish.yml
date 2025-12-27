@@ -83,6 +83,25 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
       
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          # Get tag name (e.g., v0.5.0 -> 0.5.0)
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Tag: $TAG_NAME, Version: $VERSION"
+      
+      - name: Update Cargo.toml version
+        run: |
+          VERSION="${{ steps.extract_version.outputs.VERSION }}"
+          echo "📝 Updating Cargo.toml to version $VERSION"
+          # Use sed to replace the version line
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          # Verify the change
+          grep "^version" Cargo.toml
+      
       - name: Verify package
         run: cargo package --allow-dirty
       
@@ -90,15 +109,15 @@ jobs:
         if: github.event.inputs.dry_run == 'true'
         run: |
           echo "🔍 Dry run mode - not publishing"
-          cargo publish --dry-run
+          cargo publish --dry-run --allow-dirty
       
       - name: Publish to crates.io
         if: github.event.inputs.dry_run != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          echo "📦 Publishing to crates.io..."
-          cargo publish
+          echo "📦 Publishing version ${{ steps.extract_version.outputs.VERSION }} to crates.io..."
+          cargo publish --allow-dirty
           echo "✅ Published successfully!"
 
   # Create GitHub Release with binaries
