@@ -82,6 +82,10 @@ impl BadBlockTable {
         self.status.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.status.is_empty()
+    }
+
     pub fn set_status(&mut self, block: usize, status: BlockStatus) {
         if block < self.status.len() {
             self.status[block] = status;
