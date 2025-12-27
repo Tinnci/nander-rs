@@ -265,7 +265,7 @@ mod tests {
     fn test_flash_options_default() {
         let opts = FlashOptions::default();
         assert_eq!(opts.address, 0);
-        assert_eq!(opts.use_ecc, true);
-        assert_eq!(opts.verify, false);
+        assert!(opts.use_ecc);
+        assert!(!opts.verify);
     }
 }

@@ -2,6 +2,8 @@
 //!
 //! Official VID: 1A86, PID: 55DB (Mode 1: UART + SPI + I2C)
 
+pub mod protocol;
+
 use crate::error::{Error, Result};
 use crate::infrastructure::programmer::traits::Programmer;
 use log::{debug, warn};
@@ -9,15 +11,6 @@ use nusb::Device;
 
 pub const CH347_VID: u16 = 0x1A86;
 pub const CH347_PID: u16 = 0x55DB;
-
-#[allow(dead_code)]
-mod commands {
-    pub const CMD_SPI_SET_CFG: u8 = 0xC0; // Configure SPI
-    pub const CMD_SPI_CONTROL: u8 = 0xC1; // CS control
-    pub const CMD_SPI_RD_WR: u8 = 0xC2; // Standard read/write
-    pub const CMD_SPI_BLCK_RD: u8 = 0xC3; // Block read
-    pub const CMD_SPI_BLCK_WR: u8 = 0xC4; // Block write
-}
 
 pub struct Ch347 {
     #[allow(dead_code)]
@@ -50,7 +43,7 @@ impl Ch347 {
             interface,
             out_endpoint,
             in_endpoint,
-            current_speed: 5, // Default ~3MHz
+            current_speed: 5, // Default ~1.8MHz
         };
 
         // Initialize with default settings
@@ -95,13 +88,7 @@ impl Programmer for Ch347 {
             return Ok(());
         }
 
-        // CH347 RD_WR format: [CMD_SPI_RD_WR(1B)] + [Length(2B)] + [Payload]
-        let mut packet = Vec::with_capacity(3 + tx.len());
-        packet.push(commands::CMD_SPI_RD_WR);
-        packet.push((tx.len() & 0xFF) as u8);
-        packet.push(((tx.len() >> 8) & 0xFF) as u8);
-        packet.extend_from_slice(tx);
-
+        let packet = protocol::build_spi_transfer_cmd(tx);
         let response = self.usb_write_read(&packet, tx.len())?;
 
         if response.len() != rx.len() {
@@ -119,37 +106,16 @@ impl Programmer for Ch347 {
     }
 
     fn set_cs(&mut self, active: bool) -> Result<()> {
-        // CMD_SPI_CONTROL (0xC1) payload: [CS_Level]
-        // Usually 0 for active (low), 1 for inactive (high).
-        let cs_level = if active { 0 } else { 1 };
-        let packet = [commands::CMD_SPI_CONTROL, 1, 0, cs_level];
+        let packet = protocol::build_cs_cmd(active);
         self.usb_write_read(&packet, 0)?;
         Ok(())
     }
 
     fn set_speed(&mut self, speed: u8) -> Result<()> {
-        debug!("CH347: Setting speed level {}", speed);
+        let spi_speed = protocol::SpiSpeed::from_u8(speed);
+        debug!("CH347: Setting speed to {}", spi_speed.description());
 
-        // CH347 Config Packet (simplified based on research)
-        // CMD_SPI_SET_CFG (0xC0) followed by 26 bytes of configuration data.
-        let mut cfg = vec![0u8; 26];
-
-        // Value mapping for iClock (Index 5):
-        // 0: 60MHz, 1: 30MHz, 2: 15MHz, 3: 7.5MHz, 4: 3.75MHz, 5: 1.875MHz, 6: 937.5KHz, 7: 468.75KHz
-        cfg[5] = speed.min(7);
-
-        // Mode (Index 1): SPI Mode 0 as default
-        cfg[1] = 0;
-
-        // Byte Order (Index 7): 1 = MSB First
-        cfg[7] = 1;
-
-        let mut packet = Vec::with_capacity(3 + cfg.len());
-        packet.push(commands::CMD_SPI_SET_CFG);
-        packet.push((cfg.len() & 0xFF) as u8);
-        packet.push(((cfg.len() >> 8) & 0xFF) as u8);
-        packet.extend_from_slice(&cfg);
-
+        let packet = protocol::build_set_cfg_cmd(spi_speed);
         self.usb_write_read(&packet, 0)?;
         self.current_speed = speed;
         Ok(())

@@ -235,6 +235,31 @@ pub enum Command {
         interactive: bool,
     },
 
+    /// Execute a batch script for automated workflows
+    #[command(alias = "b")]
+    Batch {
+        /// Path to batch script file (JSON or TOML)
+        #[arg(short, long)]
+        script: Option<PathBuf>,
+
+        /// Use a built-in template: 'flash-update' or 'production'
+        #[arg(short, long, conflicts_with = "script")]
+        template: Option<String>,
+
+        /// Firmware file (required when using templates)
+        #[arg(
+            short,
+            long,
+            required_if_eq("template", "flash-update"),
+            required_if_eq("template", "production")
+        )]
+        firmware: Option<PathBuf>,
+
+        /// Save the template script to a file instead of executing
+        #[arg(long)]
+        save_to: Option<PathBuf>,
+    },
+
     /// Launch the Graphical User Interface
     #[command(alias = "g")]
     Gui,

@@ -14,4 +14,5 @@ pub use detect_chip::DetectChipUseCase;
 pub use erase_flash::{EraseFlashUseCase, EraseParams};
 pub use read_flash::{ReadFlashUseCase, ReadParams};
 pub use status_flash::StatusUseCase;
+pub use verify_flash::{VerifyFlashUseCase, VerifyParams};
 pub use write_flash::{WriteFlashUseCase, WriteParams};

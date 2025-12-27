@@ -114,7 +114,7 @@ mod tests {
 
         assert_eq!(req.address.as_u32(), 0x1000);
         assert_eq!(req.length, 2048);
-        assert_eq!(req.use_ecc, true);
+        assert!(req.use_ecc);
         assert_eq!(req.oob_mode, OobMode::Included);
         assert_eq!(req.bad_block_strategy, BadBlockStrategy::Skip);
         assert_eq!(req.retry_count, 3);

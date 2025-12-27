@@ -123,29 +123,29 @@ mod tests {
     fn test_bad_block_strategy_logic() {
         // Test Fail strategy
         let fail = BadBlockStrategy::Fail;
-        assert_eq!(fail.should_continue(), false);
-        assert_eq!(fail.should_include_bad(), false);
+        assert!(!fail.should_continue());
+        assert!(!fail.should_include_bad());
 
         // Test Skip strategy
         let skip = BadBlockStrategy::Skip;
-        assert_eq!(skip.should_continue(), true);
-        assert_eq!(skip.should_include_bad(), false);
+        assert!(skip.should_continue());
+        assert!(!skip.should_include_bad());
 
         // Test Include strategy
         let include = BadBlockStrategy::Include;
-        assert_eq!(include.should_continue(), true);
-        assert_eq!(include.should_include_bad(), true);
+        assert!(include.should_continue());
+        assert!(include.should_include_bad());
     }
 
     #[test]
     fn test_bad_block_table_operations() {
         let mut bbt = BadBlockTable::new(10);
         assert_eq!(bbt.len(), 10);
-        assert_eq!(bbt.is_empty(), false); // actually checks if status vector is empty, not if it contains bad blocks. status vector size 10 is not empty.
+        assert!(!bbt.is_empty()); // actually checks if status vector is empty, not if it contains bad blocks. status vector size 10 is not empty.
 
         // Check initial state
         assert_eq!(bbt.get_status(0), BlockStatus::Unknown);
-        assert_eq!(bbt.is_bad(0), false);
+        assert!(!bbt.is_bad(0));
 
         // Mark bad blocks
         bbt.set_status(1, BlockStatus::BadFactory);
@@ -154,13 +154,13 @@ mod tests {
 
         // Verify status
         assert_eq!(bbt.get_status(1), BlockStatus::BadFactory);
-        assert_eq!(bbt.is_bad(1), true);
+        assert!(bbt.is_bad(1));
 
         assert_eq!(bbt.get_status(5), BlockStatus::BadRuntime);
-        assert_eq!(bbt.is_bad(5), true);
+        assert!(bbt.is_bad(5));
 
         assert_eq!(bbt.get_status(8), BlockStatus::Good);
-        assert_eq!(bbt.is_bad(8), false);
+        assert!(!bbt.is_bad(8));
 
         // Out of bounds check
         assert_eq!(bbt.get_status(100), BlockStatus::Unknown);

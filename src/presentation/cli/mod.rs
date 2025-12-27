@@ -178,6 +178,82 @@ pub fn execute(args: Args) -> Result<()> {
             }
             Ok(())
         }
+        Command::Batch {
+            script,
+            template,
+            firmware,
+            save_to,
+        } => {
+            use crate::application::batch::{templates, BatchScript};
+            use crate::infrastructure::chip_database::ChipRegistry;
+            use crate::infrastructure::programmer;
+
+            // Load or generate the batch script
+            let batch_script = if let Some(script_path) = script {
+                // Load from file (auto-detect JSON/TOML from extension)
+                let ext = script_path
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("");
+                match ext {
+                    "json" => BatchScript::from_json_file(&script_path)?,
+                    "toml" => BatchScript::from_toml_file(&script_path)?,
+                    _ => {
+                        return Err(crate::error::Error::Other(
+                            "Script file must have .json or .toml extension".to_string(),
+                        ))
+                    }
+                }
+            } else if let Some(template_name) = template {
+                // Use built-in template
+                let firmware_path = firmware.ok_or_else(|| {
+                    crate::error::Error::Other(
+                        "Firmware file is required when using templates".to_string(),
+                    )
+                })?;
+
+                match template_name.as_str() {
+                    "flash-update" => templates::flash_update(firmware_path),
+                    "production" => templates::production_program(firmware_path),
+                    _ => {
+                        return Err(crate::error::Error::Other(format!(
+                            "Unknown template: '{}'. Available: 'flash-update', 'production'",
+                            template_name
+                        )))
+                    }
+                }
+            } else {
+                return Err(crate::error::Error::Other(
+                    "Either --script or --template must be specified".to_string(),
+                ));
+            };
+
+            // If --save-to is specified, save the script and exit
+            if let Some(save_path) = save_to {
+                let ext = save_path
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("json");
+                match ext {
+                    "json" => batch_script.to_json_file(&save_path)?,
+                    "toml" => batch_script.to_toml_file(&save_path)?,
+                    _ => batch_script.to_json_file(&save_path)?,
+                }
+                println!("✓ Batch script saved to: {:?}", save_path);
+                return Ok(());
+            }
+
+            // Execute the batch script
+            let mut prog = programmer::discover()?;
+            if let Some(speed) = Some(args.spi_speed) {
+                prog.set_speed(speed)?;
+            }
+
+            let registry = ChipRegistry::new();
+            batch_script.execute(prog.as_mut(), &registry)?;
+
+            Ok(())
+        }
         Command::Gui => {
             crate::presentation::gui::run().map_err(|e| crate::error::Error::Other(e.to_string()))
         }
