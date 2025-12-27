@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2025-12-27
+
+### Fixed
+- **Release Automation**: Fixed automated release builds on Windows/Linux/macOS.
+- **CH347 Protocol**: Corrected critical protocol errors in SPI configuration and CS control (v0.5.1).
+
+### Added
+- **Multi-Platform Releases**: CI now automatically builds and attaches binaries for Windows, Linux, and macOS to GitHub Releases.
+- **Trusted Publishing**: Switched release workflow to use OIDC authentication for improved security.
+
 ## [0.5.0] - 2025-12-27
 
 ### Added
