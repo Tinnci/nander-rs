@@ -18,8 +18,8 @@ pub fn run() -> eframe::Result<()> {
 
     let native_options = NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([600.0, 400.0])
-            .with_min_inner_size([400.0, 300.0])
+            .with_inner_size([900.0, 650.0])
+            .with_min_inner_size([600.0, 450.0])
             .with_title("nander-rs"),
         ..Default::default()
     };
