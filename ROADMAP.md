@@ -232,9 +232,12 @@
     - [x] 实现 SPI EEPROM (25xxx) 支持
     - [x] 实现 I2C EEPROM (24Cxx) 支持  
     - [x] 实现 4 字节地址模式支持
-    - [ ] 实现 Microwire EEPROM (93Cxx) 支持 (Phase 2)
-    - [ ] 终端彩色输出优化 (Phase 3)
+    - [x] 实现 Microwire EEPROM (93Cxx) 支持 (Phase 2)
+    - [x] 实现状态寄存器写保护控制 (Protect/Status)
+    - [x] 详细进度条 (速度统计, 预计剩余时间)
+    - [x] 终端彩色输出优化 (Phase 3)
     - [ ] 自动重试机制 (Phase 3)
+    - [ ] 坏块表 (BBT) 扫描与更新 (Advanced)
     - [ ] 基于 egui 的 GUI 预览 (Phase 4)
 
 ---

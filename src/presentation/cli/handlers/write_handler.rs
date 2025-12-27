@@ -94,7 +94,8 @@ impl WriteHandler {
 
         pb.finish_with_message("Write Complete");
 
-        println!("\nDone!");
+        use colored::*;
+        println!("{}", "\nWrite SUCCESSFUL!".green().bold());
         Ok(())
     }
 }

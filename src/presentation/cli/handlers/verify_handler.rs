@@ -87,7 +87,8 @@ impl VerifyHandler {
 
         pb.finish_with_message("Verification Complete");
 
-        println!("\nVerification SUCCESSFUL!");
+        use colored::*;
+        println!("{}", "\nVerification SUCCESSFUL!".green().bold());
         Ok(())
     }
 }

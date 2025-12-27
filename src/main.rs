@@ -18,7 +18,11 @@ fn main() -> Result<()> {
     info!("nander-rs v{}", env!("CARGO_PKG_VERSION"));
 
     // Execute the command using the new layered architecture
-    nander_rs::presentation::cli::execute(args).map_err(|e| anyhow::anyhow!(e))?;
+    if let Err(e) = nander_rs::presentation::cli::execute(args) {
+        use colored::*;
+        eprintln!("{} {}", "Error:".red().bold(), e);
+        std::process::exit(1);
+    }
 
     Ok(())
 }

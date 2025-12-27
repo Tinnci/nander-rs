@@ -24,20 +24,26 @@ impl InfoHandler {
     }
 
     pub fn handle(&self, speed: Option<u8>) -> Result<()> {
+        use colored::*;
+
         println!("Detecting flash chip...");
 
         match self.use_case.execute(speed) {
             Ok((programmer, spec)) => {
-                println!("Programmer:   {}", programmer.name());
+                println!("Programmer:   {}", programmer.name().cyan());
                 println!("----------------------------------");
-                println!("Manufacturer: {}", spec.manufacturer);
-                println!("Model:        {}", spec.name);
-                println!("Type:         {}", spec.flash_type);
-                println!("Capacity:     {}", spec.capacity);
-                println!("ID:           {}", spec.jedec_id);
+                println!("Manufacturer: {}", spec.manufacturer.green());
+                println!("Model:        {}", spec.name.green().bold());
+                println!("Type:         {}", spec.flash_type.to_string().yellow());
+                println!("Capacity:     {}", spec.capacity.to_string().cyan());
+                println!("ID:           {}", spec.jedec_id.to_string().blue());
 
                 if let Some(oob) = spec.layout.oob_size {
-                    println!("Page Size:    {} + {} OOB", spec.layout.page_size, oob);
+                    println!(
+                        "Page Size:    {} + {}",
+                        spec.layout.page_size,
+                        format!("{} OOB", oob).yellow()
+                    );
                 } else {
                     println!("Page Size:    {}", spec.layout.page_size);
                 }
@@ -45,10 +51,7 @@ impl InfoHandler {
                 println!("Block Size:   {}", spec.layout.block_size);
                 Ok(())
             }
-            Err(e) => {
-                eprintln!("Error detecting chip: {}", e);
-                Err(e)
-            }
+            Err(e) => Err(e),
         }
     }
 }

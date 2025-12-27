@@ -91,7 +91,8 @@ impl EraseHandler {
 
         pb.finish_with_message("Erase Complete");
 
-        println!("\nDone!");
+        use colored::*;
+        println!("{}", "\nErase SUCCESSFUL!".green().bold());
         Ok(())
     }
 }

@@ -22,6 +22,7 @@ anyhow = "1"
 
 # Progress bar
 indicatif = "0.17"
+colored = "2"
 
 # Logging
 log = "0.4"

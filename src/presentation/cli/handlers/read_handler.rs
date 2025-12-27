@@ -97,7 +97,8 @@ impl ReadHandler {
         let mut file = File::create(output).map_err(Error::Io)?;
         file.write_all(&data).map_err(Error::Io)?;
 
-        println!("Done!");
+        use colored::*;
+        println!("{}", "Read SUCCESSFUL!".green().bold());
         Ok(())
     }
 }
