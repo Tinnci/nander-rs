@@ -1,24 +1,33 @@
-//! GigaDevice SPI NOR Flash Chips
+//! EON (ESMT) SPI NOR Flash Chips
 //!
-//! GigaDevice Corporation - Manufacturer ID: 0xC8
+//! EON Silicon Solution - Manufacturer ID: 0x1C
 
 use crate::domain::chip::*;
 use crate::domain::types::*;
 
-/// GigaDevice Manufacturer ID
-pub const MANUFACTURER_ID: u8 = 0xC8;
-pub const MANUFACTURER_NAME: &str = "GigaDevice";
+/// EON Manufacturer ID
+pub const MANUFACTURER_ID: u8 = 0x1C;
+pub const MANUFACTURER_NAME: &str = "EON";
 
 pub fn get_chips() -> Vec<ChipSpec> {
     vec![
         // =========================================================================
-        // GD25Q Series - Standard SPI NOR Flash
+        // EN25F/Q/QH Series - SPI NOR Flash
         // =========================================================================
-        nor_chip("GD25Q16", 0x4015, 32, 64),       // 16Mbit = 2MB
-        nor_chip("GD25Q32", 0x4016, 64, 64),       // 32Mbit = 4MB
-        nor_chip("GD25Q64CSIG", 0x4017, 128, 64),  // 64Mbit = 8MB
-        nor_chip("GD25Q128CSIG", 0x4018, 256, 64), // 128Mbit = 16MB
-        nor_chip_4b("GD25Q256CSIG", 0x4019, 512, 64), // 256Mbit = 32MB, 4-byte addr
+        nor_chip("EN25F16", 0x3115, 32, 64),
+        nor_chip("EN25Q16", 0x3015, 32, 64),
+        nor_chip("EN25QH16", 0x7015, 32, 64),
+        nor_chip("EN25Q32B", 0x3016, 64, 64),
+        nor_chip("EN25F32", 0x3116, 64, 64),
+        nor_chip("EN25F64", 0x2017, 128, 64),
+        nor_chip("EN25Q64", 0x3017, 128, 64),
+        nor_chip("EN25QA64A", 0x6017, 128, 64),
+        nor_chip("EN25QH64A", 0x7017, 128, 64),
+        nor_chip("EN25Q128", 0x3018, 256, 64),
+        nor_chip("EN25QA128A", 0x6018, 256, 64),
+        nor_chip("EN25QH128A", 0x7018, 256, 64),
+        nor_chip("GM25Q128A", 0x4018, 256, 64),
+        nor_chip_4b("EN25Q256", 0x7019, 512, 64),
     ]
 }
 
@@ -33,7 +42,7 @@ fn nor_chip(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -> C
         flash_type: FlashType::Nor,
         capacity: Capacity::bytes(capacity_bytes),
         layout: ChipLayout {
-            page_size: 256, // Standard NOR page size
+            page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
         },
@@ -44,7 +53,7 @@ fn nor_chip(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -> C
     }
 }
 
-/// Helper function to create a NOR chip spec (4-byte address for >16MB)
+/// Helper for 4-byte address chips
 fn nor_chip_4b(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -> ChipSpec {
     let capacity_bytes = n_sectors * sector_size_kb * 1024;
 

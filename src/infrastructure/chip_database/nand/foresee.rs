@@ -1,29 +1,31 @@
-//! Micron SPI NAND Flash Chips
+//! FORESEE (Longsys) SPI NAND Flash Chips
 //!
-//! Micron Technology, Inc. - Manufacturer ID: 0x2C
+//! FORESEE/Longsys - Manufacturer ID: 0xCD
 
 use crate::domain::chip::*;
 use crate::domain::types::*;
 
-/// Micron Manufacturer ID
-pub const MANUFACTURER_ID: u8 = 0x2C;
-pub const MANUFACTURER_NAME: &str = "Micron";
+/// FORESEE Manufacturer ID
+pub const MANUFACTURER_ID: u8 = 0xCD;
+pub const MANUFACTURER_NAME: &str = "FORESEE";
 
 pub fn get_chips() -> Vec<ChipSpec> {
     vec![
         // =========================================================================
-        // MT29F Series - SPI NAND Flash
+        // FS35ND Series - SPI NAND Flash
         // =========================================================================
         // 1Gbit (128MB)
-        nand_chip("MT29F1G01", [0x2C, 0x14, 0x00], 1, 2048, 128, 128),
-        // 2Gbit (256MB) - Has plane select
-        nand_chip("MT29F2G01", [0x2C, 0x24, 0x00], 2, 2048, 128, 128),
-        // 4Gbit (512MB) - Has plane select and die select
-        nand_chip("MT29F4G01", [0x2C, 0x36, 0x00], 4, 2048, 128, 128),
+        nand_chip("FS35ND01GD1F1", [0xCD, 0xA1, 0x00], 1, 2048, 64, 128),
+        nand_chip("FS35ND01GS1F1", [0xCD, 0xB1, 0x00], 1, 2048, 128, 128),
+        // 2Gbit (256MB)
+        nand_chip("FS35ND02GS2F1", [0xCD, 0xA2, 0x00], 2, 2048, 64, 128),
+        nand_chip("FS35ND02GD1F1", [0xCD, 0xB2, 0x00], 2, 2048, 128, 128),
+        // 1Gbit alternative (F35SQA series)
+        nand_chip("F35SQA001G", [0xCD, 0x71, 0x00], 1, 2048, 64, 128),
     ]
 }
 
-/// Helper function to create a Micron NAND chip spec
+/// Helper function to create a FORESEE NAND chip spec
 fn nand_chip(
     name: &str,
     jedec_id: [u8; 3],
