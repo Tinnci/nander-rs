@@ -25,6 +25,9 @@ pub const CMD_WRITE_DISABLE: u8 = 0x04;
 /// Reset device
 pub const CMD_RESET: u8 = 0xFF;
 
+/// Write status register (standard)
+pub const NOR_CMD_WRSR: u8 = 0x01;
+
 // ============================================================================
 // SPI NOR Commands
 // ============================================================================

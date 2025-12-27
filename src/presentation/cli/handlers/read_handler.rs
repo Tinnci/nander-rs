@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use crate::application::use_cases::detect_chip::DetectChipUseCase;
 use crate::application::use_cases::read_flash::{ReadFlashUseCase, ReadParams};
-use crate::domain::{BadBlockStrategy, FlashType, OobMode};
+use crate::domain::FlashType;
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
 use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, MicrowireEeprom, SpiEeprom};
@@ -32,76 +32,66 @@ impl ReadHandler {
         }
     }
 
-    pub fn handle(
-        &self,
-        output: PathBuf,
-        start: u32,
-        length: Option<u32>,
-        disable_ecc: bool,
-        ignore_ecc: bool,
-        strategy: BadBlockStrategy,
-        oob_mode: OobMode,
-        speed: Option<u8>,
-    ) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute(speed)?;
+    pub fn handle(&self, output: PathBuf, options: crate::domain::FlashOptions) -> Result<()> {
+        let (programmer, spec) = self.detect_use_case.execute(options.speed)?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
-        let read_len = length.unwrap_or(spec.capacity.as_bytes() - start);
+        let start = options.address;
+        let read_len = options.length.unwrap_or(spec.capacity.as_bytes() - start);
 
         // Prepare parameters
         let params = ReadParams {
             address: start,
             length: read_len,
-            use_ecc: !disable_ecc,
-            ignore_ecc_errors: ignore_ecc,
-            oob_mode,
-            bad_block_strategy: strategy,
+            use_ecc: options.use_ecc,
+            ignore_ecc_errors: options.ignore_ecc_errors,
+            oob_mode: options.oob_mode,
+            bad_block_strategy: options.bad_block_strategy,
         };
 
         println!("Reading {} bytes starting at 0x{:08X}...", read_len, start);
+
+        let pb = super::create_progress_bar(read_len as u64, "Reading");
 
         let data = match spec.flash_type {
             FlashType::Nand => {
                 let protocol = SpiNand::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
-                    print!("\rProgress: {:.1}%", progress.percentage());
-                    let _ = std::io::stdout().flush();
+                    pb.set_position(progress.current);
                 })?
             }
             FlashType::Nor => {
                 let protocol = SpiNor::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
-                    print!("\rProgress: {:.1}%", progress.percentage());
-                    let _ = std::io::stdout().flush();
+                    pb.set_position(progress.current);
                 })?
             }
             FlashType::SpiEeprom => {
                 let protocol = SpiEeprom::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
-                    print!("\rProgress: {:.1}%", progress.percentage());
-                    let _ = std::io::stdout().flush();
+                    pb.set_position(progress.current);
                 })?
             }
             FlashType::I2cEeprom => {
                 let protocol = I2cEeprom::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
-                    print!("\rProgress: {:.1}%", progress.percentage());
-                    let _ = std::io::stdout().flush();
+                    pb.set_position(progress.current);
                 })?
             }
             FlashType::MicrowireEeprom => {
                 let protocol = MicrowireEeprom::new(programmer, spec);
                 let mut use_case = ReadFlashUseCase::new(protocol);
                 use_case.execute(params, |progress| {
-                    print!("\rProgress: {:.1}%", progress.percentage());
-                    let _ = std::io::stdout().flush();
+                    pb.set_position(progress.current);
                 })?
             }
         };
+
+        pb.finish_with_message("Read Complete");
 
         println!("\nWriting to file: {:?}", output);
         let mut file = File::create(output).map_err(Error::Io)?;

@@ -53,4 +53,18 @@ pub trait FlashOperation {
     fn read(&mut self, request: ReadRequest, on_progress: &dyn Fn(Progress)) -> Result<Vec<u8>>;
     fn write(&mut self, request: WriteRequest, on_progress: &dyn Fn(Progress)) -> Result<()>;
     fn erase(&mut self, request: EraseRequest, on_progress: &dyn Fn(Progress)) -> Result<()>;
+
+    /// Read status register(s)
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        Err(crate::error::Error::NotSupported(
+            "get_status not implemented".to_string(),
+        ))
+    }
+
+    /// Write status register(s)
+    fn set_status(&mut self, _status: &[u8]) -> Result<()> {
+        Err(crate::error::Error::NotSupported(
+            "set_status not implemented".to_string(),
+        ))
+    }
 }

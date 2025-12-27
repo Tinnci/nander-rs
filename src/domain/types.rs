@@ -80,6 +80,42 @@ pub enum FlashType {
     MicrowireEeprom,
 }
 
+/// Common options for Flash operations
+#[derive(Debug, Clone, Copy)]
+pub struct FlashOptions {
+    /// Starting address
+    pub address: u32,
+    /// Length of operation (if applicable)
+    pub length: Option<u32>,
+    /// Whether to use/check ECC
+    pub use_ecc: bool,
+    /// Whether to ignore ECC errors (useful for recovery)
+    pub ignore_ecc_errors: bool,
+    /// Strategy for handling NAND bad blocks
+    pub bad_block_strategy: super::bad_block::BadBlockStrategy,
+    /// How to handle NAND OOB data
+    pub oob_mode: super::OobMode,
+    /// SPI/I2C speed setting
+    pub speed: Option<u8>,
+    /// Whether to verify after write
+    pub verify: bool,
+}
+
+impl Default for FlashOptions {
+    fn default() -> Self {
+        Self {
+            address: 0,
+            length: None,
+            use_ecc: true,
+            ignore_ecc_errors: false,
+            bad_block_strategy: super::bad_block::BadBlockStrategy::Fail,
+            oob_mode: super::OobMode::None,
+            speed: None,
+            verify: false,
+        }
+    }
+}
+
 impl fmt::Display for FlashType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

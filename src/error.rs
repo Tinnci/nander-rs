@@ -64,6 +64,10 @@ pub enum Error {
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
 
+    /// Validation error
+    #[error("Validation error: {0}")]
+    Validation(String),
+
     /// IO error
     #[error("IO error: {0}")]
     Io(std::io::Error),

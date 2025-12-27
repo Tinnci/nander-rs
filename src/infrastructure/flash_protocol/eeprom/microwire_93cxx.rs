@@ -99,7 +99,7 @@ impl<P: Programmer> MicrowireEeprom<P> {
     fn write_enable(&mut self, enable: bool) -> Result<()> {
         self.start()?;
         let op = MW_OP_EWEN; // EWEN, EWDS, ERAL, WRAL all start with 100b
-        self.send_bits(op as u32, 2); // Send the other 2 bits of opcode
+        self.send_bits(op as u32, 2)?; // Send the other 2 bits of opcode
 
         let addr = if enable {
             0b11 << (self.address_bits - 2)

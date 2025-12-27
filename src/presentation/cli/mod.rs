@@ -6,7 +6,7 @@ pub mod args;
 pub mod handlers;
 
 use crate::domain::bad_block::BadBlockStrategy;
-use crate::domain::OobMode;
+use crate::domain::{FlashOptions, OobMode};
 use crate::error::Result;
 use args::{Args, Command};
 use handlers::*;
@@ -54,18 +54,17 @@ pub fn execute(args: Args) -> Result<()> {
             ignore_ecc,
         } => {
             let handler = ReadHandler::new();
-            let strategy = get_bad_block_strategy(skip_bad, include_bad);
-            let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(
-                output,
-                start,
+            let options = FlashOptions {
+                address: start,
                 length,
-                disable_ecc,
-                ignore_ecc,
-                strategy,
-                oob_mode,
-                Some(args.spi_speed),
-            )
+                use_ecc: !disable_ecc,
+                ignore_ecc_errors: ignore_ecc,
+                bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
+                oob_mode: get_oob_mode(oob, oob_only),
+                speed: Some(args.spi_speed),
+                verify: false,
+            };
+            handler.handle(output, options)
         }
         Command::Write {
             input,
@@ -79,29 +78,34 @@ pub fn execute(args: Args) -> Result<()> {
             ignore_ecc,
         } => {
             let handler = WriteHandler::new();
-            let strategy = get_bad_block_strategy(skip_bad, include_bad);
-            let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(
-                input,
-                start,
+            let options = FlashOptions {
+                address: start,
+                length: None, // Write uses input file length
+                use_ecc: !disable_ecc,
+                ignore_ecc_errors: ignore_ecc,
+                bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
+                oob_mode: get_oob_mode(oob, oob_only),
+                speed: Some(args.spi_speed),
                 verify,
-                disable_ecc,
-                ignore_ecc,
-                strategy,
-                oob_mode,
-                Some(args.spi_speed),
-            )
+            };
+            handler.handle(input, options)
         }
         Command::Erase {
             length,
             start,
-            disable_ecc: _, // Erase handler currently doesn't use ECC
+            disable_ecc: _,
             skip_bad,
             include_bad,
         } => {
             let handler = EraseHandler::new();
-            let strategy = get_bad_block_strategy(skip_bad, include_bad);
-            handler.handle(start, length, strategy, Some(args.spi_speed))
+            let options = FlashOptions {
+                address: start,
+                length,
+                bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
+                speed: Some(args.spi_speed),
+                ..Default::default()
+            };
+            handler.handle(options)
         }
         Command::Verify {
             input,
@@ -114,17 +118,25 @@ pub fn execute(args: Args) -> Result<()> {
             ignore_ecc,
         } => {
             let handler = VerifyHandler::new();
-            let strategy = get_bad_block_strategy(skip_bad, include_bad);
-            let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(
-                input,
-                start,
-                disable_ecc,
-                ignore_ecc,
-                strategy,
-                oob_mode,
-                Some(args.spi_speed),
-            )
+            let options = FlashOptions {
+                address: start,
+                length: None,
+                use_ecc: !disable_ecc,
+                ignore_ecc_errors: ignore_ecc,
+                bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
+                oob_mode: get_oob_mode(oob, oob_only),
+                speed: Some(args.spi_speed),
+                verify: false,
+            };
+            handler.handle(input, options)
+        }
+        Command::Protect { operation } => {
+            let handler = ProtectHandler::new();
+            handler.handle_protect(&operation, Some(args.spi_speed))
+        }
+        Command::Status { value } => {
+            let handler = ProtectHandler::new();
+            handler.handle_status(value, Some(args.spi_speed))
         }
     }
 }

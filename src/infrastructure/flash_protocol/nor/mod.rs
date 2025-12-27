@@ -55,7 +55,7 @@ impl<P: Programmer> SpiNor<P> {
         }
     }
 
-    fn read_status(&mut self) -> Result<u8> {
+    pub(crate) fn read_status(&mut self) -> Result<u8> {
         self.programmer.set_cs(true)?;
         self.programmer.spi_write(&[CMD_READ_STATUS_ALT])?;
         let data = self.programmer.spi_read(1)?;
@@ -245,5 +245,19 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
         }
 
         Ok(())
+    }
+
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        Ok(vec![self.read_status()?])
+    }
+
+    fn set_status(&mut self, status: &[u8]) -> Result<()> {
+        if status.is_empty() {
+            return Ok(());
+        }
+        self.write_enable()?;
+        let cmd = vec![NOR_CMD_WRSR, status[0]];
+        self.programmer.spi_transfer(&cmd, &mut [])?;
+        self.wait_ready()
     }
 }

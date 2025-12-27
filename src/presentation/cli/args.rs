@@ -178,4 +178,18 @@ pub enum Command {
         #[arg(short = 'I', long = "ignore-ecc")]
         ignore_ecc: bool,
     },
+
+    /// Manage flash write protection (BP bits)
+    Protect {
+        /// Operation: status, enable, disable
+        #[arg(value_name = "OPERATION", default_value = "status")]
+        operation: String,
+    },
+
+    /// Directly read or write status register(s)
+    Status {
+        /// New status register value(s) in hex (optional, if provided it performs a write)
+        #[arg(value_name = "VALUE")]
+        value: Option<String>,
+    },
 }
