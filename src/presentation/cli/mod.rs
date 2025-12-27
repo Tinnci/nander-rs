@@ -261,6 +261,17 @@ pub fn execute(args: Args) -> Result<()> {
         Command::Gui => {
             crate::presentation::gui::run().map_err(|e| crate::error::Error::Other(e.to_string()))
         }
+        Command::Passthrough { mode, tx, rx, addr } => {
+            let handler = PassthroughHandler::new();
+            handler.handle(
+                Some(&args.driver),
+                Some(args.spi_speed),
+                &mode,
+                tx,
+                rx,
+                addr,
+            )
+        }
     }
 }
 

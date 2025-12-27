@@ -267,6 +267,26 @@ pub enum Command {
     /// Launch the Graphical User Interface
     #[command(alias = "g")]
     Gui,
+
+    /// Low-level passthrough mode (I2C/SPI)
+    #[command(alias = "pass")]
+    Passthrough {
+        /// Mode: spi or i2c
+        #[arg(short, long, default_value = "spi")]
+        mode: String,
+
+        /// Data to transmit (hex string, e.g., "9F00")
+        #[arg(short, long)]
+        tx: Option<String>,
+
+        /// Number of bytes to read response
+        #[arg(short, long, default_value = "0")]
+        rx: usize,
+
+        /// I2C Address (7-bit, hex or decimal, required for I2C)
+        #[arg(short, long)]
+        addr: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

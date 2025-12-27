@@ -15,10 +15,13 @@ pub use bbt_handler::BbtHandler;
 pub use erase_handler::EraseHandler;
 pub use info_handler::InfoHandler;
 pub use list_handler::ListHandler;
+pub use passthrough_handler::PassthroughHandler;
 pub use protect_handler::ProtectHandler;
 pub use read_handler::ReadHandler;
 pub use verify_handler::VerifyHandler;
 pub use write_handler::WriteHandler;
+
+pub mod passthrough_handler;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
