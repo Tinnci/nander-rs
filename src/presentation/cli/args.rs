@@ -227,6 +227,14 @@ pub enum Command {
         command: BbtCommand,
     },
 
+    /// Run diagnostic tests on the programmer (no flash chip needed)
+    #[command(alias = "test")]
+    Diagnostic {
+        /// Run interactive SPI command tester
+        #[arg(short, long)]
+        interactive: bool,
+    },
+
     /// Launch the Graphical User Interface
     #[command(alias = "g")]
     Gui,
