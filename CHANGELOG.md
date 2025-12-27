@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2025-12-28
+
+### Added
+- **I2C/SPI Passthrough Command**
+  - New `pass` / `passthrough` subcommand for low-level transactions.
+  - Support for raw SPI and I2C (with address) operations via CLI.
+- **FTDI Programmer Support**
+  - Implemented pure Rust backend for FTDI FT232H/FT2232H/FT4232H chips.
+  - Native MPSSE protocol implementation without external C library dependencies.
+- **CH347 Performance "Larger Pack" Mode**
+  - Implemented custom handshake protocol (`CMD_JTAG_INIT`) to unlock 50KB bulk transfers.
+  - Dramatic throughput increase for high-speed Flash operations.
+- **CLI improvements**
+  - Added unit test coverage for argument parsing and handlers.
+  - Explicit driver selection via `--driver` / `-D` flag (ftdi, ch347, etc.).
+
+### Improved
+- **Architecture**
+  - `Programmer` trait now supports optimization hooks (`max_bulk_transfer_size`, `spi_transaction`).
+  - Unified device discovery logic for USB programmers.
+
+
 ## [0.5.3] - 2025-12-27
 
 ### Fixed
