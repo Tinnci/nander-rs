@@ -90,15 +90,6 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "📌 Tag: $TAG_NAME, Version: $VERSION"
       
-      - name: Update Cargo.toml version
-        run: |
-          VERSION="${{ steps.extract_version.outputs.VERSION }}"
-          echo "📝 Updating Cargo.toml to version $VERSION"
-          # Use sed to replace the version line
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-          # Verify the change
-          grep "^version" Cargo.toml
-      
       - name: Verify package
         run: cargo package --allow-dirty
       
