@@ -70,16 +70,33 @@ impl<P: Programmer> SpiNor<P> {
         Ok(())
     }
 
-    fn addr_to_bytes(&self, addr: u32) -> [u8; 3] {
-        [(addr >> 16) as u8, (addr >> 8) as u8, addr as u8]
+    fn addr_to_bytes(&self, addr: u32) -> Vec<u8> {
+        if self.spec.capabilities.supports_4byte_addr {
+            vec![
+                (addr >> 24) as u8,
+                (addr >> 16) as u8,
+                (addr >> 8) as u8,
+                addr as u8,
+            ]
+        } else {
+            vec![(addr >> 16) as u8, (addr >> 8) as u8, addr as u8]
+        }
     }
 
     #[allow(dead_code)]
     fn read_internal(&mut self, address: u32, len: usize) -> Result<Vec<u8>> {
         let addr_bytes = self.addr_to_bytes(address);
+        let cmd = if self.spec.capabilities.supports_4byte_addr {
+            CMD_NOR_READ_4B
+        } else {
+            CMD_NOR_READ
+        };
+
+        let mut tx = vec![cmd];
+        tx.extend_from_slice(&addr_bytes);
+
         self.programmer.set_cs(true)?;
-        self.programmer
-            .spi_write(&[CMD_NOR_READ, addr_bytes[0], addr_bytes[1], addr_bytes[2]])?;
+        self.programmer.spi_write(&tx)?;
         let data = self.programmer.spi_read(len)?;
         self.programmer.set_cs(false)?;
         Ok(data)
@@ -106,13 +123,15 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
             // Use Fast Read command (0x0B) with dummy byte for higher speed
             // Format: CMD + 3-byte addr + 1 dummy byte, then read data
             let addr_bytes = self.addr_to_bytes(current_addr);
-            let cmd = [
-                CMD_NOR_FAST_READ,
-                addr_bytes[0],
-                addr_bytes[1],
-                addr_bytes[2],
-                0x00,
-            ];
+            let cmd_byte = if self.spec.capabilities.supports_4byte_addr {
+                CMD_NOR_FAST_READ_4B
+            } else {
+                CMD_NOR_FAST_READ
+            };
+
+            let mut cmd = vec![cmd_byte];
+            cmd.extend_from_slice(&addr_bytes);
+            cmd.push(0x00); // Dummy byte
 
             // Use optimized spi_transaction for bulk read
             let chunk = self.programmer.spi_transaction(&cmd, read_size)?;
@@ -144,13 +163,17 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
             self.write_enable()?;
 
             let addr_bytes = self.addr_to_bytes(current_addr);
+            let cmd_byte = if self.spec.capabilities.supports_4byte_addr {
+                CMD_NOR_PAGE_PROGRAM_4B
+            } else {
+                CMD_NOR_PAGE_PROGRAM
+            };
+
+            let mut cmd = vec![cmd_byte];
+            cmd.extend_from_slice(&addr_bytes);
+
             self.programmer.set_cs(true)?;
-            self.programmer.spi_write(&[
-                CMD_NOR_PAGE_PROGRAM,
-                addr_bytes[0],
-                addr_bytes[1],
-                addr_bytes[2],
-            ])?;
+            self.programmer.spi_write(&cmd)?;
             self.programmer
                 .spi_write(&data[offset..offset + bytes_to_write])?;
             self.programmer.set_cs(false)?;
@@ -203,13 +226,17 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
             self.write_enable()?;
 
             let addr_bytes = self.addr_to_bytes(block_addr);
+            let cmd_byte = if self.spec.capabilities.supports_4byte_addr {
+                CMD_NOR_BLOCK_ERASE_64K_4B
+            } else {
+                CMD_NOR_BLOCK_ERASE_64K
+            };
+
+            let mut cmd = vec![cmd_byte];
+            cmd.extend_from_slice(&addr_bytes);
+
             self.programmer.set_cs(true)?;
-            self.programmer.spi_write(&[
-                CMD_NOR_BLOCK_ERASE_64K,
-                addr_bytes[0],
-                addr_bytes[1],
-                addr_bytes[2],
-            ])?;
+            self.programmer.spi_write(&cmd)?;
             self.programmer.set_cs(false)?;
 
             self.wait_ready()?;

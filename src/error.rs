@@ -71,4 +71,8 @@ pub enum Error {
     /// Transfer error (raw USB)
     #[error("USB transfer error: {0}")]
     Transfer(#[from] nusb::transfer::TransferError),
+
+    /// Feature not supported
+    #[error("Not supported: {0}")]
+    NotSupported(String),
 }

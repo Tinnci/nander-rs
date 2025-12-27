@@ -21,6 +21,22 @@ pub const CMD_UIO_STREAM: u8 = 0xAB;
 /// I2C/SPI command stream end
 pub const CMD_I2C_STM_END: u8 = 0x00;
 
+/// I2C subcommands for CMD_I2C_STREAM
+pub mod i2c_sub {
+    /// Start bit
+    pub const START: u8 = 0x74;
+    /// Stop bit
+    pub const STOP: u8 = 0x75;
+    /// Output data (write). OR with length (0-31)
+    pub const OUT: u8 = 0x80;
+    /// Input data (read). OR with length (0-31)
+    pub const IN: u8 = 0xC0;
+    /// Set speed/MS. OR with 0-7?
+    pub const SET: u8 = 0x60;
+    /// End of stream
+    pub const END: u8 = 0x00;
+}
+
 /// Set CS (chip select) state
 pub const CMD_UIO_STM_OUT: u8 = 0x80;
 

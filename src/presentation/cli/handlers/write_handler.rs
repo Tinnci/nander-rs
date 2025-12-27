@@ -11,6 +11,7 @@ use crate::application::use_cases::write_flash::{WriteFlashUseCase, WriteParams}
 use crate::domain::{BadBlockStrategy, FlashType, OobMode};
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
+use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, SpiEeprom};
 use crate::infrastructure::flash_protocol::nand::SpiNand;
 use crate::infrastructure::flash_protocol::nor::SpiNor;
 
@@ -78,6 +79,27 @@ impl WriteHandler {
                     print!("\rProgress: {:.1}%", progress.percentage());
                     let _ = std::io::stdout().flush();
                 })?
+            }
+            FlashType::SpiEeprom => {
+                let protocol = SpiEeprom::new(programmer, spec);
+                let mut use_case = WriteFlashUseCase::new(protocol);
+                use_case.execute(params, |progress| {
+                    print!("\rProgress: {:.1}%", progress.percentage());
+                    let _ = std::io::stdout().flush();
+                })?
+            }
+            FlashType::I2cEeprom => {
+                let protocol = I2cEeprom::new(programmer, spec);
+                let mut use_case = WriteFlashUseCase::new(protocol);
+                use_case.execute(params, |progress| {
+                    print!("\rProgress: {:.1}%", progress.percentage());
+                    let _ = std::io::stdout().flush();
+                })?
+            }
+            FlashType::MicrowireEeprom => {
+                return Err(Error::NotSupported(
+                    "Microwire EEPROM support is not yet implemented".to_string(),
+                ));
             }
         };
 

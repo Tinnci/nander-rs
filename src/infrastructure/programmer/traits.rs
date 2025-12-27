@@ -86,6 +86,26 @@ pub trait Programmer {
     fn set_speed(&mut self, _speed: u8) -> Result<()> {
         Ok(())
     }
+
+    // =========================================================================
+    // I2C Methods (Optional)
+    // =========================================================================
+
+    /// Execute an I2C write transaction
+    fn i2c_write(&mut self, _addr: u8, _data: &[u8]) -> Result<()> {
+        use crate::error::Error;
+        Err(Error::NotSupported(
+            "I2C write not supported by this programmer".to_string(),
+        ))
+    }
+
+    /// Execute an I2C read transaction
+    fn i2c_read(&mut self, _addr: u8, _len: usize) -> Result<Vec<u8>> {
+        use crate::error::Error;
+        Err(Error::NotSupported(
+            "I2C read not supported by this programmer".to_string(),
+        ))
+    }
 }
 
 impl Programmer for Box<dyn Programmer> {
@@ -127,5 +147,13 @@ impl Programmer for Box<dyn Programmer> {
 
     fn set_speed(&mut self, speed: u8) -> Result<()> {
         self.as_mut().set_speed(speed)
+    }
+
+    fn i2c_write(&mut self, addr: u8, data: &[u8]) -> Result<()> {
+        self.as_mut().i2c_write(addr, data)
+    }
+
+    fn i2c_read(&mut self, addr: u8, len: usize) -> Result<Vec<u8>> {
+        self.as_mut().i2c_read(addr, len)
     }
 }

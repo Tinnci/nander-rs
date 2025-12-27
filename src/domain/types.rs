@@ -72,6 +72,12 @@ pub enum FlashType {
     Nand,
     /// SPI NOR Flash
     Nor,
+    /// SPI EEPROM (25xxx series)
+    SpiEeprom,
+    /// I2C EEPROM (24Cxx series)
+    I2cEeprom,
+    /// Microwire EEPROM (93Cxx series)
+    MicrowireEeprom,
 }
 
 impl fmt::Display for FlashType {
@@ -79,6 +85,9 @@ impl fmt::Display for FlashType {
         match self {
             FlashType::Nand => write!(f, "SPI NAND"),
             FlashType::Nor => write!(f, "SPI NOR"),
+            FlashType::SpiEeprom => write!(f, "SPI EEPROM"),
+            FlashType::I2cEeprom => write!(f, "I2C EEPROM"),
+            FlashType::MicrowireEeprom => write!(f, "Microwire EEPROM"),
         }
     }
 }

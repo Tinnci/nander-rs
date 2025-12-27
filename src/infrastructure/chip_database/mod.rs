@@ -1,3 +1,4 @@
+pub mod eeprom;
 pub mod nand;
 pub mod nor;
 pub mod registry;

@@ -172,4 +172,43 @@ impl Programmer for Ch341a {
         debug!("Setting SPI speed to: {}", spi_speed.description());
         self.set_speed_internal(spi_speed)
     }
+
+    fn i2c_write(&mut self, addr: u8, data: &[u8]) -> Result<()> {
+        if data.len() > 31 {
+            return Err(crate::error::Error::InvalidParameter(
+                "I2C write data length exceeds 31 bytes".to_string(),
+            ));
+        }
+
+        let mut cmd = Vec::with_capacity(data.len() + 6);
+        cmd.push(protocol::CMD_I2C_STREAM);
+        cmd.push(protocol::i2c_sub::START);
+        cmd.push(protocol::i2c_sub::OUT | (data.len() as u8 + 1));
+        cmd.push(addr); // Device address (Write)
+        cmd.extend_from_slice(data);
+        cmd.push(protocol::i2c_sub::STOP);
+        cmd.push(protocol::CMD_I2C_STM_END);
+
+        self.bulk_write(&cmd)
+    }
+
+    fn i2c_read(&mut self, addr: u8, len: usize) -> Result<Vec<u8>> {
+        if len > 32 {
+            return Err(crate::error::Error::InvalidParameter(
+                "I2C read length exceeds 32 bytes".to_string(),
+            ));
+        }
+
+        let mut cmd = Vec::with_capacity(8);
+        cmd.push(protocol::CMD_I2C_STREAM);
+        cmd.push(protocol::i2c_sub::START);
+        cmd.push(protocol::i2c_sub::OUT | 1);
+        cmd.push(addr | 1); // Device address (Read)
+        cmd.push(protocol::i2c_sub::IN | (len as u8));
+        cmd.push(protocol::i2c_sub::STOP);
+        cmd.push(protocol::CMD_I2C_STM_END);
+
+        self.bulk_write(&cmd)?;
+        self.bulk_read(len)
+    }
 }

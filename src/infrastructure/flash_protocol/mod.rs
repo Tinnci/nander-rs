@@ -1,8 +1,9 @@
 //! Infrastructure - Flash Protocols
 //!
-//! Implementation of SPI NAND and SPI NOR Flash protocols.
+//! Implementation of SPI NAND, SPI NOR, and EEPROM protocols.
 
 pub mod commands;
+pub mod eeprom;
 pub mod nand;
 pub mod nor;
 

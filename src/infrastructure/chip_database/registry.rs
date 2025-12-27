@@ -1,4 +1,4 @@
-use super::{nand, nor};
+use super::{eeprom, nand, nor};
 use crate::domain::{ChipSpec, JedecId};
 
 pub struct ChipRegistry {
@@ -16,6 +16,7 @@ impl ChipRegistry {
         let mut chips = Vec::new();
         chips.extend(nand::get_all_nand());
         chips.extend(nor::get_all_nor());
+        chips.extend(eeprom::get_all_eeprom());
         Self { chips }
     }
 

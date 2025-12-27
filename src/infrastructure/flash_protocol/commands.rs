@@ -54,6 +54,31 @@ pub const CMD_NOR_CHIP_ERASE: u8 = 0xC7;
 pub const CMD_NOR_CHIP_ERASE_ALT: u8 = 0x60;
 
 // ============================================================================
+// SPI NOR 4-Byte Address Mode Commands (for >16MB chips)
+// ============================================================================
+
+/// Enter 4-byte address mode
+pub const CMD_NOR_ENTER_4BYTE_MODE: u8 = 0xB7;
+
+/// Exit 4-byte address mode
+pub const CMD_NOR_EXIT_4BYTE_MODE: u8 = 0xE9;
+
+/// Read data with 4-byte address
+pub const CMD_NOR_READ_4B: u8 = 0x13;
+
+/// Fast read with 4-byte address (requires dummy byte)
+pub const CMD_NOR_FAST_READ_4B: u8 = 0x0C;
+
+/// Page program with 4-byte address
+pub const CMD_NOR_PAGE_PROGRAM_4B: u8 = 0x12;
+
+/// Sector erase (4KB) with 4-byte address
+pub const CMD_NOR_SECTOR_ERASE_4K_4B: u8 = 0x21;
+
+/// Block erase (64KB) with 4-byte address
+pub const CMD_NOR_BLOCK_ERASE_64K_4B: u8 = 0xDC;
+
+// ============================================================================
 // SPI NAND Commands
 // ============================================================================
 
@@ -146,6 +171,53 @@ pub const FEATURE_STATUS: u8 = 0xC0;
 
 /// Drive strength register
 pub const FEATURE_DRIVE_STRENGTH: u8 = 0xD0;
+
+// ============================================================================
+// SPI EEPROM Commands (25xxx series)
+// ============================================================================
+
+/// SPI EEPROM Read data (standard SPI read)
+/// Same as NOR Flash: CMD + Address + Data
+pub const CMD_EEPROM_READ: u8 = 0x03;
+
+/// SPI EEPROM Write data (byte or page program)
+/// Same as NOR Flash: CMD + Address + Data
+pub const CMD_EEPROM_WRITE: u8 = 0x02;
+
+/// SPI EEPROM Write Enable
+pub const CMD_EEPROM_WREN: u8 = 0x06;
+
+/// SPI EEPROM Write Disable
+pub const CMD_EEPROM_WRDI: u8 = 0x04;
+
+/// SPI EEPROM Read Status Register
+pub const CMD_EEPROM_RDSR: u8 = 0x05;
+
+/// SPI EEPROM Write Status Register
+pub const CMD_EEPROM_WRSR: u8 = 0x01;
+
+// ============================================================================
+// SPI EEPROM Status Register Bits
+// ============================================================================
+
+/// SPI EEPROM Status Register - Write In Progress (WIP)
+pub const STATUS_EEPROM_WIP: u8 = 0x01;
+
+/// SPI EEPROM Status Register - Write Enable Latch (WEL)
+pub const STATUS_EEPROM_WEL: u8 = 0x02;
+
+/// SPI EEPROM Status Register - Block Protect bit 0
+pub const STATUS_EEPROM_BP0: u8 = 0x04;
+
+/// SPI EEPROM Status Register - Block Protect bit 1
+pub const STATUS_EEPROM_BP1: u8 = 0x08;
+
+// ============================================================================
+// I2C EEPROM Constants (24Cxx series)
+// ============================================================================
+
+/// Default I2C base address for 24Cxx EEPROMs (A0, A1, A2 pins low)
+pub const I2C_ADDR_24CXX: u8 = 0xA0;
 
 // ============================================================================
 // Configuration Register Bits (NAND - address 0xB0)
