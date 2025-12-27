@@ -21,6 +21,10 @@ pub enum GuiMessage {
     },
     /// Request to erase flash
     EraseFlash { start: u32, length: Option<u32> },
+    /// Request to set SPI speed
+    SetSpeed(u8),
+    /// Request to select CS line
+    SetCsIndex(u8),
     /// Request to cancel current operation
     Cancel,
 }

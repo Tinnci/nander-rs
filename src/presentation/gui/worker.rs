@@ -348,6 +348,34 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                 ))
                 .ok();
             }
+            GuiMessage::SetSpeed(speed) => {
+                if let Some(ref mut p) = programmer {
+                    match p.set_speed(speed) {
+                        Ok(_) => {
+                            tx.send(WorkerMessage::Log(format!("SPI speed set to {}", speed)))
+                                .ok();
+                        }
+                        Err(e) => {
+                            tx.send(WorkerMessage::Log(format!("Failed to set speed: {}", e)))
+                                .ok();
+                        }
+                    }
+                }
+            }
+            GuiMessage::SetCsIndex(index) => {
+                if let Some(ref mut p) = programmer {
+                    match p.select_cs(index) {
+                        Ok(_) => {
+                            tx.send(WorkerMessage::Log(format!("CS line set to {}", index)))
+                                .ok();
+                        }
+                        Err(e) => {
+                            tx.send(WorkerMessage::Log(format!("Failed to set CS: {}", e)))
+                                .ok();
+                        }
+                    }
+                }
+            }
         }
     }
 }

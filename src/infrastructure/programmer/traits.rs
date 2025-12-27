@@ -32,6 +32,11 @@ pub trait Programmer {
     /// Control the Chip Select (CS) line
     fn set_cs(&mut self, active: bool) -> Result<()>;
 
+    /// Select which Chip Select (CS) line to use (if supported)
+    fn select_cs(&mut self, _index: u8) -> Result<()> {
+        Ok(())
+    }
+
     // =========================================================================
     // Optimized Bulk Transfer Methods (with default implementations)
     // =========================================================================

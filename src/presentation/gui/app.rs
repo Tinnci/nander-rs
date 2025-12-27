@@ -3,6 +3,13 @@ use crate::domain::ChipSpec;
 use eframe::{egui, App, Frame};
 use std::sync::mpsc::{Receiver, Sender};
 
+#[derive(PartialEq)]
+enum Tab {
+    Read,
+    Write,
+    Erase,
+}
+
 pub struct NanderApp {
     /// Channel to send commands to the worker thread
     tx: Sender<GuiMessage>,
@@ -10,6 +17,9 @@ pub struct NanderApp {
     rx: Receiver<WorkerMessage>,
 
     // UI State
+    active_tab: Tab,
+    spi_speed: u8,
+    cs_index: u8,
     status_text: String,
     programmer_name: Option<String>,
     chip_spec: Option<ChipSpec>,
@@ -32,6 +42,9 @@ impl NanderApp {
         Self {
             tx,
             rx,
+            active_tab: Tab::Read,
+            spi_speed: 5, // Default speed
+            cs_index: 0,
             status_text: "Ready".to_string(),
             programmer_name: None,
             chip_spec: None,
@@ -220,6 +233,7 @@ impl App for NanderApp {
         // Poll for messages every frame
         self.handle_messages();
 
+        // 1. Top Panel (Menu)
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.menu_button("File", |ui| {
@@ -230,43 +244,162 @@ impl App for NanderApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("nander-rs");
+        // 2. Left Side Panel (Settings)
+        egui::SidePanel::left("settings_panel")
+            .resizable(true)
+            .default_width(200.0)
+            .show(ctx, |ui| {
+                ui.heading("Settings");
+                ui.separator();
 
-            ui.separator();
-
-            // Status Section
-            ui.horizontal(|ui| {
-                ui.label("Programmer:");
-                if let Some(name) = &self.programmer_name {
-                    ui.label(egui::RichText::new(name).color(egui::Color32::GREEN));
-                } else {
-                    ui.label(egui::RichText::new("Disconnected").color(egui::Color32::RED));
-                    if ui.button("Connect").clicked() && !self.is_busy {
-                        self.is_busy = true;
-                        self.status_text = "Connecting...".to_string();
-                        self.tx.send(GuiMessage::Connect).ok();
+                ui.vertical(|ui| {
+                    ui.label("Programmer:");
+                    if let Some(name) = &self.programmer_name {
+                        ui.label(egui::RichText::new(name).color(egui::Color32::GREEN));
+                    } else {
+                        ui.label(egui::RichText::new("Disconnected").color(egui::Color32::RED));
+                        if ui.button("Connect").clicked() && !self.is_busy {
+                            self.is_busy = true;
+                            self.status_text = "Connecting...".to_string();
+                            self.tx.send(GuiMessage::Connect).ok();
+                        }
                     }
+
+                    ui.separator();
+
+                    ui.label("SPI Speed:");
+                    if ui
+                        .add(egui::Slider::new(&mut self.spi_speed, 0..=7).text("Level"))
+                        .changed()
+                    {
+                        self.tx.send(GuiMessage::SetSpeed(self.spi_speed)).ok();
+                    }
+
+                    ui.separator();
+
+                    ui.label("Chip Select (CS):");
+                    ui.horizontal(|ui| {
+                        if ui.selectable_value(&mut self.cs_index, 0, "CS0").clicked() {
+                            self.tx.send(GuiMessage::SetCsIndex(0)).ok();
+                        }
+                        if ui.selectable_value(&mut self.cs_index, 1, "CS1").clicked() {
+                            self.tx.send(GuiMessage::SetCsIndex(1)).ok();
+                        }
+                    });
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(!self.is_busy, egui::Button::new("Detect Chip"))
+                        .clicked()
+                    {
+                        self.is_busy = true;
+                        self.tx.send(GuiMessage::DetectChip).ok();
+                    }
+
+                    if let Some(spec) = &self.chip_spec {
+                        ui.group(|ui| {
+                            ui.strong("Chip Info");
+                            ui.label(format!("Name: {}", spec.name));
+                            ui.label(format!("Size: {}", spec.capacity));
+                            ui.label(format!("Type: {:?}", spec.flash_type));
+                        });
+                    }
+                });
+            });
+
+        // 3. Bottom Panel (Status & Logs)
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Status:");
+                ui.label(&self.status_text);
+
+                if let Some(prog) = self.progress {
+                    ui.add(
+                        egui::ProgressBar::new(prog)
+                            .show_percentage()
+                            .desired_width(200.0),
+                    );
                 }
             });
 
-            if let Some(spec) = &self.chip_spec {
-                ui.group(|ui| {
-                    ui.strong("Chip Information");
-                    ui.label(format!("Manufacturer: {}", spec.manufacturer));
-                    ui.label(format!("Model: {}", spec.name));
-                    ui.label(format!("Capacity: {}", spec.capacity));
-                    ui.label(format!("Type: {:?}", spec.flash_type));
-                });
-            }
+            ui.separator();
+
+            ui.collapsing("Logs", |ui| {
+                egui::ScrollArea::vertical()
+                    .stick_to_bottom(true)
+                    .max_height(100.0)
+                    .show(ui, |ui| {
+                        for log in &self.logs {
+                            ui.monospace(log);
+                        }
+                    });
+            });
+        });
+
+        // 4. Central Panel (Operations)
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.active_tab, Tab::Read, "Read");
+                ui.selectable_value(&mut self.active_tab, Tab::Write, "Write");
+                ui.selectable_value(&mut self.active_tab, Tab::Erase, "Erase");
+            });
 
             ui.separator();
 
-            if self.chip_spec.is_some() {
-                ui.group(|ui| {
-                    ui.strong("Operations");
+            let can_operate = !self.is_busy && self.programmer_name.is_some();
+            let start = Self::parse_u32(&self.start_address).unwrap_or(0);
+            let len = Self::parse_u32(&self.length);
+
+            match self.active_tab {
+                Tab::Read => {
+                    ui.heading("Read Flash");
                     ui.horizontal(|ui| {
-                        if ui.button("Select File...").clicked() {
+                        if ui.button("Select Save Path...").clicked() {
+                            if let Some(path) = rfd::FileDialog::new().save_file() {
+                                self.selected_file = Some(path);
+                            }
+                        }
+                        if let Some(path) = &self.selected_file {
+                            ui.label(format!("Path: {}", path.display()));
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Start Address:");
+                        ui.text_edit_singleline(&mut self.start_address);
+                        ui.label("Length:");
+                        ui.text_edit_singleline(&mut self.length);
+                    });
+
+                    if ui
+                        .add_enabled(
+                            can_operate && self.selected_file.is_some(),
+                            egui::Button::new("Start Reading"),
+                        )
+                        .clicked()
+                    {
+                        if let Some(path) = &self.selected_file {
+                            self.is_busy = true;
+                            self.status_text = "Reading...".to_string();
+                            self.tx
+                                .send(GuiMessage::ReadFlash {
+                                    path: path.clone(),
+                                    start,
+                                    length: len,
+                                })
+                                .ok();
+                        }
+                    }
+
+                    ui.separator();
+                    ui.label("Hex Preview:");
+                    self.render_hex_view(ui);
+                }
+                Tab::Write => {
+                    ui.heading("Write Flash");
+                    ui.horizontal(|ui| {
+                        if ui.button("Select File to Write...").clicked() {
                             if let Some(path) = rfd::FileDialog::new().pick_file() {
                                 self.selected_file = Some(path);
                                 self.load_file_preview();
@@ -274,113 +407,59 @@ impl App for NanderApp {
                         }
                         if let Some(path) = &self.selected_file {
                             ui.label(format!("File: {}", path.display()));
-                        } else {
-                            ui.label("No file selected");
                         }
                     });
 
                     ui.horizontal(|ui| {
                         ui.label("Start Address:");
                         ui.text_edit_singleline(&mut self.start_address);
-                        ui.label("Length (bytes):");
-                        ui.text_edit_singleline(&mut self.length);
-                        if ui.button("Clear").clicked() {
-                            self.length.clear();
-                        }
                     });
 
-                    ui.horizontal(|ui| {
-                        let can_operate = !self.is_busy;
-                        let start = Self::parse_u32(&self.start_address).unwrap_or(0);
-                        let len = Self::parse_u32(&self.length);
-
-                        if ui
-                            .add_enabled(
-                                can_operate && self.selected_file.is_some(),
-                                egui::Button::new("Read"),
-                            )
-                            .clicked()
-                        {
-                            if let Some(path) = &self.selected_file {
-                                self.is_busy = true;
-                                self.status_text = "Reading...".to_string();
-                                self.tx
-                                    .send(GuiMessage::ReadFlash {
-                                        path: path.clone(),
-                                        start,
-                                        length: len,
-                                    })
-                                    .ok();
-                            }
-                        }
-
-                        if ui
-                            .add_enabled(
-                                can_operate && self.selected_file.is_some(),
-                                egui::Button::new("Write"),
-                            )
-                            .clicked()
-                        {
-                            if let Some(path) = &self.selected_file {
-                                self.is_busy = true;
-                                self.status_text = "Writing...".to_string();
-                                self.tx
-                                    .send(GuiMessage::WriteFlash {
-                                        path: path.clone(),
-                                        start,
-                                        verify: true,
-                                    })
-                                    .ok();
-                            }
-                        }
-
-                        if ui
-                            .add_enabled(can_operate, egui::Button::new("Erase"))
-                            .clicked()
-                        {
+                    if ui
+                        .add_enabled(
+                            can_operate && self.selected_file.is_some(),
+                            egui::Button::new("Start Writing"),
+                        )
+                        .clicked()
+                    {
+                        if let Some(path) = &self.selected_file {
                             self.is_busy = true;
-                            self.status_text = "Erasing...".to_string();
+                            self.status_text = "Writing...".to_string();
                             self.tx
-                                .send(GuiMessage::EraseFlash { start, length: len })
+                                .send(GuiMessage::WriteFlash {
+                                    path: path.clone(),
+                                    start,
+                                    verify: true,
+                                })
                                 .ok();
                         }
+                    }
+
+                    ui.separator();
+                    ui.label("File Preview:");
+                    self.render_hex_view(ui);
+                }
+                Tab::Erase => {
+                    ui.heading("Erase Flash");
+                    ui.horizontal(|ui| {
+                        ui.label("Start Address:");
+                        ui.text_edit_singleline(&mut self.start_address);
+                        ui.label("Length:");
+                        ui.text_edit_singleline(&mut self.length);
                     });
-                });
+
+                    if ui
+                        .add_enabled(can_operate, egui::Button::new("Start Erasing"))
+                        .clicked()
+                    {
+                        self.is_busy = true;
+                        self.status_text = "Erasing...".to_string();
+                        self.tx
+                            .send(GuiMessage::EraseFlash { start, length: len })
+                            .ok();
+                    }
+                }
             }
-
-            ui.separator();
-
-            // Progress Bar
-            if let Some(prog) = self.progress {
-                ui.add(egui::ProgressBar::new(prog).show_percentage());
-            }
-
-            // Status Bar
-            ui.horizontal(|ui| {
-                ui.label("Status:");
-                ui.label(&self.status_text);
-            });
-
-            ui.separator();
-
-            // Hex View
-            ui.collapsing("Hex Preview", |ui| {
-                self.render_hex_view(ui);
-            });
-
-            ui.separator();
-
-            // Log View
-            ui.collapsing("Logs", |ui| {
-                egui::ScrollArea::vertical()
-                    .stick_to_bottom(true)
-                    .max_height(200.0)
-                    .show(ui, |ui| {
-                        for log in &self.logs {
-                            ui.monospace(log);
-                        }
-                    });
-            });
         });
 
         // Handle File Drops
