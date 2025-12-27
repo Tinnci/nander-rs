@@ -99,6 +99,8 @@ pub struct FlashOptions {
     pub speed: Option<u8>,
     /// Whether to verify after write
     pub verify: bool,
+    /// Number of retries for read operations
+    pub retry_count: u32,
 }
 
 impl Default for FlashOptions {
@@ -112,6 +114,7 @@ impl Default for FlashOptions {
             oob_mode: super::OobMode::None,
             speed: None,
             verify: false,
+            retry_count: 0,
         }
     }
 }

@@ -130,8 +130,26 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
             cmd.extend_from_slice(&addr_bytes);
             cmd.push(0x00); // Dummy byte
 
-            // Use optimized spi_transaction for bulk read
-            let chunk = self.programmer.spi_transaction(&cmd, read_size)?;
+            let mut attempts = 0;
+            let chunk = loop {
+                match self.programmer.spi_transaction(&cmd, read_size) {
+                    Ok(data) => break data,
+                    Err(e) => {
+                        if attempts < request.retry_count {
+                            attempts += 1;
+                            log::warn!(
+                                "Read error at 0x{:08X}, retrying (attempt {}): {}",
+                                current_addr,
+                                attempts,
+                                e
+                            );
+                            continue;
+                        } else {
+                            return Err(e);
+                        }
+                    }
+                }
+            };
             result.extend_from_slice(&chunk);
 
             remaining -= read_size;
@@ -192,7 +210,7 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
                 oob_mode: request.oob_mode,
                 bad_block_strategy: request.bad_block_strategy,
                 bbt: None,
-                retry_count: 0,
+                retry_count: request.retry_count,
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {

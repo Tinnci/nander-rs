@@ -62,11 +62,32 @@ impl<P: Programmer> FlashOperation for I2cEeprom<P> {
             let read_size = remaining.min(MAX_I2C_READ);
             let (device_addr, addr_bytes) = self.get_addressing_info(current_addr);
 
-            // Step 1: Write memory address
-            self.programmer.i2c_write(device_addr, &addr_bytes)?;
+            // Step 1 & 2: Write memory address and read data with retry
+            let mut attempts = 0;
+            let chunk = loop {
+                let res = (|| -> Result<Vec<u8>> {
+                    self.programmer.i2c_write(device_addr, &addr_bytes)?;
+                    self.programmer.i2c_read(device_addr, read_size)
+                })();
 
-            // Step 2: Read data
-            let chunk = self.programmer.i2c_read(device_addr, read_size)?;
+                match res {
+                    Ok(data) => break data,
+                    Err(e) => {
+                        if attempts < request.retry_count {
+                            attempts += 1;
+                            log::warn!(
+                                "Read error at 0x{:08X}, retrying (attempt {}): {}",
+                                current_addr,
+                                attempts,
+                                e
+                            );
+                            continue;
+                        } else {
+                            return Err(e);
+                        }
+                    }
+                }
+            };
             result.extend_from_slice(&chunk);
 
             remaining -= read_size;
@@ -117,7 +138,7 @@ impl<P: Programmer> FlashOperation for I2cEeprom<P> {
                 oob_mode: request.oob_mode,
                 bad_block_strategy: request.bad_block_strategy,
                 bbt: None,
-                retry_count: 0,
+                retry_count: request.retry_count,
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {

@@ -238,9 +238,9 @@
     - [x] 实现状态寄存器写保护控制 (Protect/Status)
     - [x] 详细进度条 (速度统计, 预计剩余时间)
     - [x] 终端彩色输出优化 (Phase 3)
-    - [ ] 自动重试机制 (Phase 3)
+    - [x] 自动重试机制 (Phase 3)
         - [x] 在 `ReadRequest` 中新增 `retry_count` 字段（已完成）
-        - [ ] 在 `ReadParams`/CLI 中暴露 `retry_count` 并实现自动重试逻辑
+        - [x] 在 `ReadParams`/CLI 中暴露 `retry_count` 并实现自动重试逻辑 (已完成)
     - [x] 坏块表 (BBT) 扫描 (Advanced)
     - [ ] 坏块表 (BBT) 更新与导出 (Advanced)
     - [ ] 基于 egui 的 GUI 预览 (Phase 4)

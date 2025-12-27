@@ -48,6 +48,7 @@ impl ReadHandler {
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
             bbt: None,
+            retry_count: options.retry_count,
         };
 
         println!("Reading {} bytes starting at 0x{:08X}...", read_len, start);

@@ -44,6 +44,8 @@ pub struct WriteRequest<'a> {
     pub bad_block_strategy: BadBlockStrategy,
     /// Pre-scanned Bad Block Table (optional)
     pub bbt: Option<BadBlockTable>,
+    /// Number of retries for verify read operations
+    pub retry_count: u32,
 }
 
 /// Request for an erase operation

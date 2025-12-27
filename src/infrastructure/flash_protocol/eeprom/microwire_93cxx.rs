@@ -135,12 +135,37 @@ impl<P: Programmer> FlashOperation for MicrowireEeprom<P> {
 
         for i in 0..length {
             let curr_addr = address + i as u32;
-            self.start()?;
-            self.send_bits(MW_OP_READ as u32, 2)?;
-            self.send_bits(curr_addr, self.address_bits)?;
-            let byte = self.read_bits(8)? as u8;
+            let mut attempts = 0;
+            let byte = loop {
+                let res = (|| -> Result<u8> {
+                    self.start()?;
+                    self.send_bits(MW_OP_READ as u32, 2)?;
+                    self.send_bits(curr_addr, self.address_bits)?;
+                    let b = self.read_bits(8)? as u8;
+                    self.stop()?;
+                    Ok(b)
+                })();
+
+                match res {
+                    Ok(b) => break b,
+                    Err(e) => {
+                        if attempts < request.retry_count {
+                            attempts += 1;
+                            log::warn!(
+                                "Read error at 0x{:08X}, retrying (attempt {}): {}",
+                                curr_addr,
+                                attempts,
+                                e
+                            );
+                            self.stop().ok(); // Try to cleanup
+                            continue;
+                        } else {
+                            return Err(e);
+                        }
+                    }
+                }
+            };
             data.push(byte);
-            self.stop()?;
 
             if i % 16 == 0 {
                 on_progress(Progress::new(i as u64, length as u64));
@@ -194,6 +219,7 @@ impl<P: Programmer> FlashOperation for MicrowireEeprom<P> {
             oob_mode: OobMode::None,
             bad_block_strategy: BadBlockStrategy::Fail,
             bbt: None,
+            retry_count: 0,
         };
         self.write(write_req, on_progress)
     }

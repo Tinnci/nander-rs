@@ -77,6 +77,10 @@ pub enum Command {
         /// Ignore ECC errors and continue reading (NAND only)
         #[arg(short = 'I', long = "ignore-ecc")]
         ignore_ecc: bool,
+
+        /// Number of retries for read operations (default: 0)
+        #[arg(short = 'R', long = "retries", default_value = "0")]
+        retries: u32,
     },
 
     /// Write a file to flash
@@ -117,6 +121,10 @@ pub enum Command {
         /// Ignore ECC errors during verify (NAND only)
         #[arg(short = 'I', long = "ignore-ecc")]
         ignore_ecc: bool,
+
+        /// Number of retries for read operations (default: 0)
+        #[arg(short = 'R', long = "retries", default_value = "0")]
+        retries: u32,
     },
 
     /// Erase flash contents
@@ -177,6 +185,10 @@ pub enum Command {
         /// Ignore ECC errors and continue verifying (NAND only)
         #[arg(short = 'I', long = "ignore-ecc")]
         ignore_ecc: bool,
+
+        /// Number of retries for read operations (default: 0)
+        #[arg(short = 'R', long = "retries", default_value = "0")]
+        retries: u32,
     },
 
     /// Manage flash write protection (BP bits)

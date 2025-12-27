@@ -18,6 +18,7 @@ pub struct VerifyParams<'a> {
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
     pub bbt: Option<BadBlockTable>,
+    pub retry_count: u32,
 }
 
 /// Use case for verifying flash contents
@@ -44,7 +45,7 @@ impl<F: FlashOperation> VerifyFlashUseCase<F> {
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
             bbt: params.bbt,
-            retry_count: 0,
+            retry_count: params.retry_count,
         };
 
         // Read back the data from flash

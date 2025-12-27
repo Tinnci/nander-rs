@@ -19,6 +19,7 @@ pub struct WriteParams<'a> {
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
     pub bbt: Option<BadBlockTable>,
+    pub retry_count: u32,
 }
 
 /// Use case for writing data to flash
@@ -46,6 +47,7 @@ impl<F: FlashOperation> WriteFlashUseCase<F> {
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
             bbt: params.bbt,
+            retry_count: params.retry_count,
         };
 
         self.flash.write(request, &on_progress)

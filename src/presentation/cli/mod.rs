@@ -52,6 +52,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob,
             oob_only,
             ignore_ecc,
+            retries,
         } => {
             let handler = ReadHandler::new();
             let options = FlashOptions {
@@ -63,6 +64,7 @@ pub fn execute(args: Args) -> Result<()> {
                 oob_mode: get_oob_mode(oob, oob_only),
                 speed: Some(args.spi_speed),
                 verify: false,
+                retry_count: retries,
             };
             handler.handle(output, options)
         }
@@ -76,6 +78,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob,
             oob_only,
             ignore_ecc,
+            retries,
         } => {
             let handler = WriteHandler::new();
             let options = FlashOptions {
@@ -87,6 +90,7 @@ pub fn execute(args: Args) -> Result<()> {
                 oob_mode: get_oob_mode(oob, oob_only),
                 speed: Some(args.spi_speed),
                 verify,
+                retry_count: retries,
             };
             handler.handle(input, options)
         }
@@ -116,6 +120,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob,
             oob_only,
             ignore_ecc,
+            retries,
         } => {
             let handler = VerifyHandler::new();
             let options = FlashOptions {
@@ -127,6 +132,7 @@ pub fn execute(args: Args) -> Result<()> {
                 oob_mode: get_oob_mode(oob, oob_only),
                 speed: Some(args.spi_speed),
                 verify: false,
+                retry_count: retries,
             };
             handler.handle(input, options)
         }

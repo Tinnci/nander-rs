@@ -219,13 +219,47 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                 }
             }
 
-            let chunk = self.read_page_internal(current_page, col_offset, read_len_per_page)?;
+            let mut attempts = 0;
+            let chunk = loop {
+                match self.read_page_internal(current_page, col_offset, read_len_per_page) {
+                    Ok(data) => {
+                        // Check ECC status if requested
+                        if request.use_ecc && !request.ignore_ecc_errors {
+                            if let Err(e) = self.check_ecc_status(current_page) {
+                                if attempts < request.retry_count {
+                                    attempts += 1;
+                                    log::warn!(
+                                        "ECC error on page {}, retrying (attempt {})",
+                                        current_page,
+                                        attempts
+                                    );
+                                    continue;
+                                } else {
+                                    return Err(e);
+                                }
+                            }
+                        }
+                        break data;
+                    }
+                    Err(e) => {
+                        if attempts < request.retry_count {
+                            attempts += 1;
+                            log::warn!(
+                                "Read error on page {}, retrying (attempt {}): {}",
+                                current_page,
+                                attempts,
+                                e
+                            );
+                            continue;
+                        } else {
+                            return Err(e);
+                        }
+                    }
+                }
+            };
 
-            // Check ECC status if requested
-            if request.use_ecc && !request.ignore_ecc_errors {
-                self.check_ecc_status(current_page)?;
-            } else if request.use_ecc && request.ignore_ecc_errors {
-                // Just log if ignored
+            // Log if ECC error was ignored after all retries or if ECC check disabled
+            if request.use_ecc && request.ignore_ecc_errors {
                 if let Err(e) = self.check_ecc_status(current_page) {
                     log::debug!("Ignored ECC error: {}", e);
                 }
@@ -356,7 +390,7 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
                 oob_mode: request.oob_mode,
                 bad_block_strategy: request.bad_block_strategy,
                 bbt: request.bbt.clone(),
-                retry_count: 0,
+                retry_count: request.retry_count,
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {

@@ -18,6 +18,7 @@ pub struct ReadParams {
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
     pub bbt: Option<BadBlockTable>,
+    pub retry_count: u32,
 }
 
 /// Use case for reading data from flash
@@ -44,7 +45,7 @@ impl<F: FlashOperation> ReadFlashUseCase<F> {
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
             bbt: params.bbt,
-            retry_count: 0,
+            retry_count: params.retry_count,
         };
 
         self.flash.read(request, &on_progress)

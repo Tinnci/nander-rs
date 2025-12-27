@@ -51,6 +51,7 @@ impl WriteHandler {
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
             bbt: None,
+            retry_count: options.retry_count,
         };
 
         let pb = super::create_progress_bar(data.len() as u64, "Writing");
