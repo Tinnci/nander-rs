@@ -21,7 +21,11 @@ pub use verify_handler::VerifyHandler;
 pub use write_handler::WriteHandler;
 
 use indicatif::{ProgressBar, ProgressStyle};
+use std::path::PathBuf;
 use std::time::Duration;
+
+use crate::domain::bad_block::BadBlockTable;
+use crate::error::{Error, Result};
 
 /// Create a standardized, stylish progress bar for flash operations
 pub fn create_progress_bar(total_size: u64, message: &'static str) -> ProgressBar {
@@ -35,4 +39,12 @@ pub fn create_progress_bar(total_size: u64, message: &'static str) -> ProgressBa
     pb.set_message(message);
     pb.enable_steady_tick(Duration::from_millis(100));
     pb
+}
+
+/// Load a Bad Block Table from a JSON file
+pub fn load_bbt(path: &PathBuf) -> Result<BadBlockTable> {
+    let file = std::fs::File::open(path).map_err(Error::Io)?;
+    let bbt: BadBlockTable = serde_json::from_reader(file)
+        .map_err(|e| Error::Other(format!("Failed to parse BBT file: {}", e)))?;
+    Ok(bbt)
 }

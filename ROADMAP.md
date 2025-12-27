@@ -14,7 +14,7 @@
 | 芯片数据库 | ✅ 完成 | 100% |
 | 性能优化 | ✅ 完成 | 95% |
 | I2C EEPROM | ✅ 完成 | 95% |
-| Microwire EEPROM | ❌ 未开始 | 0% |
+| Microwire EEPROM | ✅ 完成 | 95% |
 | SPI EEPROM | ✅ 完成 | 95% |
 
 ---
@@ -35,7 +35,7 @@
 | SPI NAND Flash | ✅ 85 款芯片 | ✅ ~79 款芯片 |
 | SPI NOR Flash | ✅ 146 款芯片 | ✅ ~128 款芯片 |
 | I2C EEPROM (24Cxx) | ✅ 11 款 | ✅ 11 款芯片 |
-| Microwire EEPROM (93Cxx) | ✅ 8 款 | ❌ 未实现 |
+| Microwire EEPROM (93Cxx) | ✅ 8 款 | ✅ ~6 款芯片 |
 | SPI EEPROM (25xxx) | ✅ 11 款 | ✅ 11 款芯片 |
 
 #### 操作功能
@@ -108,9 +108,9 @@
    - [x] 9-bit 地址支持 (命令字节嵌入)
 
 **NOR Flash 功能完善**:
-- [x] 支持 4 字节地址模式 (>16MB 芯片)
-- [ ] 添加状态寄存器写保护控制
-- ✅ 优化连续读取性能 (Fast Read + Bulk)
+- [x] 4 字节地址模式 (>16MB 芯片)
+- [x] 添加状态寄存器写保护控制 (Protect/Status)
+- [x] 优化连续读取性能 (Fast Read + Bulk)
 
 ---
 
@@ -127,14 +127,14 @@
 
 2. **用户体验改善**
    - [x] 进度回调支持 (Progress callback)
-   - [ ] 详细进度条 (速度统计, 预计剩余时间)
-   - [ ] 彩色终端输出 (彩色 Log + 进度条)
+   - [x] 详细进度条 (速度统计, 预计剩余时间)
+   - [x] 彩色终端输出 (彩色 Log + 进度条)
 
 3. **可靠性增强**
    - [x] 校验和验证 (Verify)
-   - [ ] 自动重试失败操作
+   - [x] 自动重试失败操作
        - [x] 在 `ReadRequest` 中新增 `retry_count` 字段（已完成）
-       - [ ] 暴露 `retry_count` 至 `ReadParams`/CLI 并实现自动重试逻辑
+       - [x] 暴露 `retry_count` 至 `ReadParams`/CLI 并实现自动重试逻辑 (已完成)
    - [ ] 断点续传支持
 
 ---
@@ -241,8 +241,8 @@
     - [x] 自动重试机制 (Phase 3)
         - [x] 在 `ReadRequest` 中新增 `retry_count` 字段（已完成）
         - [x] 在 `ReadParams`/CLI 中暴露 `retry_count` 并实现自动重试逻辑 (已完成)
-    - [x] 坏块表 (BBT) 扫描 (Advanced)
-    - [ ] 坏块表 (BBT) 更新与导出 (Advanced)
+    - [x] 坏块表 (BBT) 扫描 (Advanced) (已完成)
+    - [x] 坏块表 (BBT) 更新与导出 (Advanced) (已完成)
     - [ ] 基于 egui 的 GUI 预览 (Phase 4)
 
 ---

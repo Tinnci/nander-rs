@@ -15,7 +15,7 @@ pub struct BadBlockInfo {
 }
 
 /// Reason a block is marked as bad
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum BadBlockReason {
     /// Factory marked bad block
     Factory,
@@ -52,7 +52,7 @@ impl BadBlockStrategy {
 }
 
 /// Status of a flash block
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum BlockStatus {
     /// Status unknown (not scanned)
     #[default]
@@ -66,7 +66,7 @@ pub enum BlockStatus {
 }
 
 /// In-memory Bad Block Table
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BadBlockTable {
     status: Vec<BlockStatus>,
 }
@@ -76,6 +76,10 @@ impl BadBlockTable {
         Self {
             status: vec![BlockStatus::Unknown; total_blocks],
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.status.len()
     }
 
     pub fn set_status(&mut self, block: usize, status: BlockStatus) {

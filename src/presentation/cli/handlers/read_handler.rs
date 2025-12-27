@@ -39,6 +39,13 @@ impl ReadHandler {
         let start = options.address;
         let read_len = options.length.unwrap_or(spec.capacity.as_bytes() - start);
 
+        // Load BBT if provided
+        let bbt = if let Some(ref path) = options.bbt_file {
+            Some(super::load_bbt(path)?)
+        } else {
+            None
+        };
+
         // Prepare parameters
         let params = ReadParams {
             address: start,
@@ -47,7 +54,7 @@ impl ReadHandler {
             ignore_ecc_errors: options.ignore_ecc_errors,
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
-            bbt: None,
+            bbt,
             retry_count: options.retry_count,
         };
 

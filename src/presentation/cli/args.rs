@@ -81,6 +81,10 @@ pub enum Command {
         /// Number of retries for read operations (default: 0)
         #[arg(short = 'R', long = "retries", default_value = "0")]
         retries: u32,
+
+        /// Use a pre-saved bad block table file
+        #[arg(long = "bbt")]
+        bbt_file: Option<PathBuf>,
     },
 
     /// Write a file to flash
@@ -125,6 +129,10 @@ pub enum Command {
         /// Number of retries for read operations (default: 0)
         #[arg(short = 'R', long = "retries", default_value = "0")]
         retries: u32,
+
+        /// Use a pre-saved bad block table file
+        #[arg(long = "bbt")]
+        bbt_file: Option<PathBuf>,
     },
 
     /// Erase flash contents
@@ -149,6 +157,10 @@ pub enum Command {
         /// Include blocks even if marked bad (NAND only)
         #[arg(short = 'K', long = "include-bad")]
         include_bad: bool,
+
+        /// Use a pre-saved bad block table file
+        #[arg(long = "bbt")]
+        bbt_file: Option<PathBuf>,
     },
 
     /// Verify flash contents against a file
@@ -189,6 +201,10 @@ pub enum Command {
         /// Number of retries for read operations (default: 0)
         #[arg(short = 'R', long = "retries", default_value = "0")]
         retries: u32,
+
+        /// Use a pre-saved bad block table file
+        #[arg(long = "bbt")]
+        bbt_file: Option<PathBuf>,
     },
 
     /// Manage flash write protection (BP bits)
@@ -215,5 +231,15 @@ pub enum Command {
 #[derive(Subcommand, Debug)]
 pub enum BbtCommand {
     /// Scan chip and list all bad blocks
-    Scan,
+    Scan {
+        /// Save the scanned table to a file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Load and display a bad block table file
+    Load {
+        /// Path to the BBT file
+        #[arg(short, long)]
+        input: PathBuf,
+    },
 }

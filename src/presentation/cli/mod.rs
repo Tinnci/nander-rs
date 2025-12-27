@@ -53,6 +53,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob_only,
             ignore_ecc,
             retries,
+            bbt_file,
         } => {
             let handler = ReadHandler::new();
             let options = FlashOptions {
@@ -65,6 +66,7 @@ pub fn execute(args: Args) -> Result<()> {
                 speed: Some(args.spi_speed),
                 verify: false,
                 retry_count: retries,
+                bbt_file,
             };
             handler.handle(output, options)
         }
@@ -79,6 +81,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob_only,
             ignore_ecc,
             retries,
+            bbt_file,
         } => {
             let handler = WriteHandler::new();
             let options = FlashOptions {
@@ -91,6 +94,7 @@ pub fn execute(args: Args) -> Result<()> {
                 speed: Some(args.spi_speed),
                 verify,
                 retry_count: retries,
+                bbt_file,
             };
             handler.handle(input, options)
         }
@@ -100,6 +104,7 @@ pub fn execute(args: Args) -> Result<()> {
             disable_ecc: _,
             skip_bad,
             include_bad,
+            bbt_file,
         } => {
             let handler = EraseHandler::new();
             let options = FlashOptions {
@@ -107,6 +112,7 @@ pub fn execute(args: Args) -> Result<()> {
                 length,
                 bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
                 speed: Some(args.spi_speed),
+                bbt_file,
                 ..Default::default()
             };
             handler.handle(options)
@@ -121,6 +127,7 @@ pub fn execute(args: Args) -> Result<()> {
             oob_only,
             ignore_ecc,
             retries,
+            bbt_file,
         } => {
             let handler = VerifyHandler::new();
             let options = FlashOptions {
@@ -133,6 +140,7 @@ pub fn execute(args: Args) -> Result<()> {
                 speed: Some(args.spi_speed),
                 verify: false,
                 retry_count: retries,
+                bbt_file,
             };
             handler.handle(input, options)
         }
@@ -147,7 +155,10 @@ pub fn execute(args: Args) -> Result<()> {
         Command::Bbt { command } => {
             let handler = BbtHandler::new();
             match command {
-                args::BbtCommand::Scan => handler.handle_scan(Some(args.spi_speed)),
+                args::BbtCommand::Scan { output } => {
+                    handler.handle_scan(Some(args.spi_speed), output)
+                }
+                args::BbtCommand::Load { input } => handler.handle_load(input),
             }
         }
     }

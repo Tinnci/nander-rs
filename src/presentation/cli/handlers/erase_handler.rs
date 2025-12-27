@@ -35,11 +35,18 @@ impl EraseHandler {
         let start = options.address;
         let erase_len = options.length.unwrap_or(spec.capacity.as_bytes() - start);
 
+        // Load BBT if provided
+        let bbt = if let Some(ref path) = options.bbt_file {
+            Some(super::load_bbt(path)?)
+        } else {
+            None
+        };
+
         let params = EraseParams {
             address: start,
             length: erase_len,
             bad_block_strategy: options.bad_block_strategy,
-            bbt: None,
+            bbt,
         };
 
         println!("Erasing {} bytes starting at 0x{:08X}...", erase_len, start);

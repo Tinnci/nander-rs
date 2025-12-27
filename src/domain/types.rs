@@ -81,7 +81,7 @@ pub enum FlashType {
 }
 
 /// Common options for Flash operations
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct FlashOptions {
     /// Starting address
     pub address: u32,
@@ -101,6 +101,8 @@ pub struct FlashOptions {
     pub verify: bool,
     /// Number of retries for read operations
     pub retry_count: u32,
+    /// Optional bad block table file path
+    pub bbt_file: Option<std::path::PathBuf>,
 }
 
 impl Default for FlashOptions {
@@ -115,6 +117,7 @@ impl Default for FlashOptions {
             speed: None,
             verify: false,
             retry_count: 0,
+            bbt_file: None,
         }
     }
 }

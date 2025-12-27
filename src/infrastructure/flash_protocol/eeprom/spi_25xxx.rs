@@ -240,11 +240,17 @@ impl<P: Programmer> FlashOperation for SpiEeprom<P> {
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {
-                return Err(Error::VerificationFailed {
-                    address: request.address.as_u32(),
-                    expected: 0,
-                    actual: 0,
-                });
+                for (i, (&actual, &expected)) in
+                    read_back.iter().zip(request.data.iter()).enumerate()
+                {
+                    if actual != expected {
+                        return Err(Error::VerificationFailed {
+                            address: request.address.as_u32() + i as u32,
+                            expected,
+                            actual,
+                        });
+                    }
+                }
             }
         }
 
@@ -279,6 +285,20 @@ impl<P: Programmer> FlashOperation for SpiEeprom<P> {
         }
 
         Ok(())
+    }
+
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        Ok(vec![self.read_status()?])
+    }
+
+    fn set_status(&mut self, status: &[u8]) -> Result<()> {
+        if status.is_empty() {
+            return Ok(());
+        }
+        self.write_enable()?;
+        self.programmer
+            .spi_transaction_write(&[CMD_EEPROM_WRSR, status[0]])?;
+        self.wait_ready()
     }
 }
 

@@ -394,11 +394,17 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {
-                return Err(Error::VerificationFailed {
-                    address: request.address.as_u32(), // Simplified, real verify usually finds exact byte
-                    expected: 0,                       // Simplified
-                    actual: 0,                         // Simplified
-                });
+                for (i, (&actual, &expected)) in
+                    read_back.iter().zip(request.data.iter()).enumerate()
+                {
+                    if actual != expected {
+                        return Err(Error::VerificationFailed {
+                            address: request.address.as_u32() + i as u32,
+                            expected,
+                            actual,
+                        });
+                    }
+                }
             }
         }
 
@@ -502,5 +508,32 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
         on_progress(Progress::new(total_blocks as u64, total_blocks as u64));
         Ok(bbt)
+    }
+
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        // Return Protection (0xA0), Config (0xB0), and Status (0xC0) as a 3-byte vector
+        let prot = self.get_feature(FEATURE_PROTECTION)?;
+        let conf = self.get_feature(FEATURE_CONFIG)?;
+        let stat = self.get_feature(FEATURE_STATUS)?;
+        Ok(vec![prot, conf, stat])
+    }
+
+    fn set_status(&mut self, status: &[u8]) -> Result<()> {
+        if status.is_empty() {
+            return Ok(());
+        }
+
+        // status[0] -> Protection (0xA0)
+        // status[1] -> Config (0xB0)
+        // status[2] -> Status (0xC0) - though Status is usually read-only, some chips allow it
+
+        self.set_feature(FEATURE_PROTECTION, status[0])?;
+        if status.len() > 1 {
+            self.set_feature(FEATURE_CONFIG, status[1])?;
+        }
+        if status.len() > 2 {
+            self.set_feature(FEATURE_STATUS, status[2])?;
+        }
+        Ok(())
     }
 }

@@ -5,6 +5,7 @@
 pub mod detect_chip;
 pub mod erase_flash;
 pub mod read_flash;
+pub mod status_flash;
 pub mod verify_flash;
 pub mod write_flash;
 
@@ -12,4 +13,5 @@ pub mod write_flash;
 pub use detect_chip::DetectChipUseCase;
 pub use erase_flash::{EraseFlashUseCase, EraseParams};
 pub use read_flash::{ReadFlashUseCase, ReadParams};
+pub use status_flash::StatusUseCase;
 pub use write_flash::{WriteFlashUseCase, WriteParams};

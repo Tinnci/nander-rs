@@ -36,6 +36,13 @@ impl VerifyHandler {
 
         println!("Verifying {} bytes starting at 0x{:08X}...", length, start);
 
+        // Load BBT if provided
+        let bbt = if let Some(ref path) = options.bbt_file {
+            Some(super::load_bbt(path)?)
+        } else {
+            None
+        };
+
         let params = VerifyParams {
             address: start,
             data: &expected_data,
@@ -43,7 +50,7 @@ impl VerifyHandler {
             ignore_ecc_errors: options.ignore_ecc_errors,
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
-            bbt: None,
+            bbt,
             retry_count: options.retry_count,
         };
 

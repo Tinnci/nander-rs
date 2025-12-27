@@ -42,6 +42,13 @@ impl WriteHandler {
             start
         );
 
+        // Load BBT if provided
+        let bbt = if let Some(ref path) = options.bbt_file {
+            Some(super::load_bbt(path)?)
+        } else {
+            None
+        };
+
         let params = WriteParams {
             address: start,
             data: &data,
@@ -50,7 +57,7 @@ impl WriteHandler {
             ignore_ecc_errors: options.ignore_ecc_errors,
             oob_mode: options.oob_mode,
             bad_block_strategy: options.bad_block_strategy,
-            bbt: None,
+            bbt,
             retry_count: options.retry_count,
         };
 

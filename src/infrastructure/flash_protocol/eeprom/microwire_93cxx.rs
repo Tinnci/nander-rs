@@ -202,7 +202,30 @@ impl<P: Programmer> FlashOperation for MicrowireEeprom<P> {
         on_progress(Progress::new(data.len() as u64, data.len() as u64));
 
         if request.verify {
-            // Verification logic is usually called by and handled in the use case
+            let verify_req = ReadRequest {
+                address: request.address,
+                length: request.data.len() as u32,
+                use_ecc: false,
+                ignore_ecc_errors: false,
+                oob_mode: OobMode::None,
+                bad_block_strategy: BadBlockStrategy::Fail,
+                bbt: None,
+                retry_count: request.retry_count,
+            };
+            let read_back = self.read(verify_req, &|_| {})?;
+            if read_back != request.data {
+                for (i, (&actual, &expected)) in
+                    read_back.iter().zip(request.data.iter()).enumerate()
+                {
+                    if actual != expected {
+                        return Err(Error::VerificationFailed {
+                            address: request.address.as_u32() + i as u32,
+                            expected,
+                            actual,
+                        });
+                    }
+                }
+            }
         }
 
         Ok(())

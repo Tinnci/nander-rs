@@ -214,11 +214,17 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
             };
             let read_back = self.read(verify_req, &|_| {})?;
             if read_back != request.data {
-                return Err(Error::VerificationFailed {
-                    address: request.address.as_u32(),
-                    expected: 0,
-                    actual: 0,
-                });
+                for (i, (&actual, &expected)) in
+                    read_back.iter().zip(request.data.iter()).enumerate()
+                {
+                    if actual != expected {
+                        return Err(Error::VerificationFailed {
+                            address: request.address.as_u32() + i as u32,
+                            expected,
+                            actual,
+                        });
+                    }
+                }
             }
         }
 

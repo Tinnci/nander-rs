@@ -88,3 +88,29 @@ pub trait FlashOperation {
         ))
     }
 }
+
+impl FlashOperation for Box<dyn FlashOperation> {
+    fn read(&mut self, request: ReadRequest, on_progress: &dyn Fn(Progress)) -> Result<Vec<u8>> {
+        self.as_mut().read(request, on_progress)
+    }
+
+    fn write(&mut self, request: WriteRequest, on_progress: &dyn Fn(Progress)) -> Result<()> {
+        self.as_mut().write(request, on_progress)
+    }
+
+    fn erase(&mut self, request: EraseRequest, on_progress: &dyn Fn(Progress)) -> Result<()> {
+        self.as_mut().erase(request, on_progress)
+    }
+
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        self.as_mut().get_status()
+    }
+
+    fn set_status(&mut self, status: &[u8]) -> Result<()> {
+        self.as_mut().set_status(status)
+    }
+
+    fn scan_bbt(&mut self, on_progress: &dyn Fn(Progress)) -> Result<BadBlockTable> {
+        self.as_mut().scan_bbt(on_progress)
+    }
+}

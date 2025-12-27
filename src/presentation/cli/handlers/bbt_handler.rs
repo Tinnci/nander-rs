@@ -8,6 +8,7 @@ use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
 use crate::infrastructure::flash_protocol::nand::SpiNand;
 use colored::*;
+use std::path::PathBuf;
 
 pub struct BbtHandler {
     detect_use_case: DetectChipUseCase,
@@ -26,7 +27,7 @@ impl BbtHandler {
         }
     }
 
-    pub fn handle_scan(&self, speed: Option<u8>) -> Result<()> {
+    pub fn handle_scan(&self, speed: Option<u8>, output: Option<PathBuf>) -> Result<()> {
         println!("Detecting flash chip...");
         let (programmer, spec) = self.detect_use_case.execute(speed)?;
 
@@ -68,6 +69,39 @@ impl BbtHandler {
 
             let total_blocks_usize = total_blocks as usize;
             for block in 0..total_blocks_usize {
+                let status = bbt.get_status(block);
+                if status == BlockStatus::BadFactory {
+                    println!("{:<10} {}", block, "Factory Bad".red());
+                } else if status == BlockStatus::BadRuntime {
+                    println!("{:<10} {}", block, "Runtime Bad".red());
+                }
+            }
+        }
+
+        if let Some(path) = output {
+            println!("\nSaving BBT to: {:?}", path);
+            let file = std::fs::File::create(&path).map_err(Error::Io)?;
+            serde_json::to_writer_pretty(file, &bbt)
+                .map_err(|e| Error::Other(format!("Failed to save BBT file: {}", e)))?;
+            println!("{}", "BBT saved successfully!".green().bold());
+        }
+
+        Ok(())
+    }
+
+    pub fn handle_load(&self, input: PathBuf) -> Result<()> {
+        println!("Loading BBT from: {:?}", input);
+        let bbt = super::load_bbt(&input)?;
+
+        let bad_count = bbt.bad_block_count();
+        println!("Loaded table with {} bad blocks.", bad_count);
+
+        if bad_count > 0 {
+            println!("--------------------------------");
+            println!("{:<10} {:<15}", "Block", "Status");
+            println!("--------------------------------");
+
+            for block in 0..bbt.len() {
                 let status = bbt.get_status(block);
                 if status == BlockStatus::BadFactory {
                     println!("{:<10} {}", block, "Factory Bad".red());

@@ -79,4 +79,8 @@ pub enum Error {
     /// Feature not supported
     #[error("Not supported: {0}")]
     NotSupported(String),
+
+    /// Miscellaneous error
+    #[error("Error: {0}")]
+    Other(String),
 }
