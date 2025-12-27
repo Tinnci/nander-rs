@@ -13,7 +13,7 @@
 | **SPI NOR** | ✅ Done | 100% | Fast Read, 4-byte Address Mode |
 | **EEPROM** | ✅ Done | 100% | I2C (24Cxx), SPI (25xxx), Microwire (93Cxx) |
 | **Advanced Features** | ✅ Done | 95% | Auto-retry, Write Verification, BBT Scans |
-| **GUI (Beta)** | ✅ Done | 80% | Basic Read/Write/Erase UI tracking |
+| **GUI (Beta)** | ✅ Done | 95% | Hex Preview, Drag-and-Drop, Read/Write/Erase |
 
 ---
 

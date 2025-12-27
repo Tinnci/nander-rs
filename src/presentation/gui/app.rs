@@ -19,6 +19,7 @@ pub struct NanderApp {
     selected_file: Option<std::path::PathBuf>,
     start_address: String,
     length: String,
+    preview_data: Vec<u8>,
 }
 
 impl NanderApp {
@@ -40,6 +41,7 @@ impl NanderApp {
             selected_file: None,
             start_address: "0x0".to_string(),
             length: "".to_string(),
+            preview_data: Vec::new(),
         }
     }
 
@@ -87,6 +89,13 @@ impl NanderApp {
                     self.is_busy = false;
                     self.status_text = "Ready".to_string();
                 }
+                WorkerMessage::DataRead(data) => {
+                    self.log(&format!("Read {} bytes successfully", data.len()));
+                    self.preview_data = data;
+                    self.progress = None;
+                    self.is_busy = false;
+                    self.status_text = "Ready".to_string();
+                }
                 WorkerMessage::OperationFailed(err) => {
                     self.log(&format!("Operation failed: {}", err));
                     self.progress = None;
@@ -95,6 +104,13 @@ impl NanderApp {
                 }
                 WorkerMessage::Log(msg) => {
                     self.log(&msg);
+                }
+                WorkerMessage::DeviceList(devices) => {
+                    self.log("=== Detected WCH Devices ===");
+                    for device in devices {
+                        self.log(&format!("  {}", device));
+                    }
+                    self.log("===========================");
                 }
             }
         }
@@ -110,6 +126,83 @@ impl NanderApp {
         if self.logs.len() > 1000 {
             self.logs.remove(0);
         }
+    }
+
+    fn render_hex_view(&mut self, ui: &mut egui::Ui) {
+        if self.preview_data.is_empty() {
+            ui.label("No data to display. Read flash to see content.");
+            return;
+        }
+
+        ui.monospace("Offset    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII");
+        ui.separator();
+
+        let bytes_per_row = 16;
+        let total_rows = self.preview_data.len().div_ceil(bytes_per_row);
+
+        egui::ScrollArea::vertical()
+            .max_height(400.0)
+            .auto_shrink([false, false])
+            .show_rows(ui, 14.0, total_rows, |ui, row_range| {
+                for r in row_range {
+                    let offset = r * bytes_per_row;
+                    if offset >= self.preview_data.len() {
+                        break;
+                    }
+                    let end = std::cmp::min(offset + bytes_per_row, self.preview_data.len());
+                    let row_data = &self.preview_data[offset..end];
+
+                    let mut hex_str = String::with_capacity(50);
+                    let mut ascii_str = String::with_capacity(bytes_per_row);
+
+                    for (i, &b) in row_data.iter().enumerate() {
+                        hex_str.push_str(&format!("{:02X} ", b));
+                        if i == 7 {
+                            hex_str.push(' ');
+                        }
+
+                        if (32..=126).contains(&b) {
+                            ascii_str.push(b as char);
+                        } else {
+                            ascii_str.push('.');
+                        }
+                    }
+
+                    // Align columns
+                    while hex_str.len() < 49 {
+                        hex_str.push(' ');
+                    }
+
+                    ui.monospace(format!("{:08X}  {}  {}", offset, hex_str, ascii_str));
+                }
+            });
+    }
+
+    fn load_file_preview(&mut self) {
+        if let Some(path) = &self.selected_file {
+            use std::io::Read;
+            if let Ok(mut f) = std::fs::File::open(path) {
+                let mut buffer = vec![0u8; 64 * 1024]; // 64KB limit for preview
+                if let Ok(n) = f.read(&mut buffer) {
+                    buffer.truncate(n);
+                    self.preview_data = buffer;
+                    self.log(&format!("Loaded file preview (first {} bytes)", n));
+                }
+            }
+        }
+    }
+
+    fn handle_dropped_files(&mut self, ctx: &egui::Context) {
+        ctx.input(|i| {
+            if !i.raw.dropped_files.is_empty() {
+                if let Some(file) = i.raw.dropped_files.first() {
+                    if let Some(path) = &file.path {
+                        self.selected_file = Some(path.clone());
+                        self.load_file_preview();
+                    }
+                }
+            }
+        });
     }
 
     fn parse_u32(s: &str) -> Option<u32> {
@@ -176,6 +269,7 @@ impl App for NanderApp {
                         if ui.button("Select File...").clicked() {
                             if let Some(path) = rfd::FileDialog::new().pick_file() {
                                 self.selected_file = Some(path);
+                                self.load_file_preview();
                             }
                         }
                         if let Some(path) = &self.selected_file {
@@ -269,6 +363,13 @@ impl App for NanderApp {
 
             ui.separator();
 
+            // Hex View
+            ui.collapsing("Hex Preview", |ui| {
+                self.render_hex_view(ui);
+            });
+
+            ui.separator();
+
             // Log View
             ui.collapsing("Logs", |ui| {
                 egui::ScrollArea::vertical()
@@ -281,6 +382,9 @@ impl App for NanderApp {
                     });
             });
         });
+
+        // Handle File Drops
+        self.handle_dropped_files(ctx);
 
         // If working, request constant repaints to update progress smoothly
         if self.is_busy {
