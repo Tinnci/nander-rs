@@ -27,9 +27,14 @@ impl BbtHandler {
         }
     }
 
-    pub fn handle_scan(&self, speed: Option<u8>, output: Option<PathBuf>) -> Result<()> {
+    pub fn handle_scan(
+        &self,
+        speed: Option<u8>,
+        output: Option<PathBuf>,
+        driver: Option<&str>,
+    ) -> Result<()> {
         println!("Detecting flash chip...");
-        let (programmer, spec) = self.detect_use_case.execute(speed)?;
+        let (programmer, spec) = self.detect_use_case.execute(speed, driver)?;
 
         // BBT is only relevant for NAND
         if spec.flash_type != FlashType::Nand {

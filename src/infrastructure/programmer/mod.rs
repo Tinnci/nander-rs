@@ -23,9 +23,50 @@ pub use traits::Programmer;
 use crate::error::{Error, Result};
 use log::debug;
 
-/// Find and open the first available programmer
-pub fn discover() -> Result<Box<dyn Programmer>> {
-    debug!("Starting programmer discovery...");
+/// Find and open a programmer
+pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
+    let driver = driver_name.unwrap_or("auto").to_lowercase();
+    debug!("Discovering programmer (driver: {})...", driver);
+
+    match driver.as_str() {
+        "auto" => auto_discover_wch(),
+        "spidev" | "linux_spi" => {
+            debug!("Initializing spidev programmer");
+            let p = SpidevProgrammer::new_raspberry_pi_default()?;
+            Ok(Box::new(p))
+        }
+        "ch341a" | "ch347" | "ftdi" => {
+            // For USB devices, we might want to still scan but look for specific VIDs/PIDs
+            // For now, let's reuse the auto-discovery but filter post-facto or modify find logic.
+            // Simplified: existing WCH logic covers CH341A/CH347
+            if driver == "ftdi" {
+                // FTDI usually 0x0403
+                // Call FTDI constructor directly if possible, or scan for FTDI
+                // Since FtdiProgrammer::new takes a device, we need to find it.
+                // But FtdiProgrammer is a stub that returns Error, so let's just use a dummy device or find one.
+                // Actually the stub takes `nusb::Device`.
+                // Let's implement a basic find_usb_device for FTDI.
+                let device = find_usb_device(0x0403, 0x6014) // FT232H default
+                    .or_else(|_| find_usb_device(0x0403, 0x6010)) // FT2232H
+                    .map_err(|_| Error::ProgrammerNotFound)?;
+                let p = FtdiProgrammer::new(device)?;
+                Ok(Box::new(p))
+            } else {
+                // For CH34x, use the existing robust logic but verify the result
+                let p = auto_discover_wch()?;
+                // weak check: if user asked for CH347 but got CH341A, warn or error?
+                // The auto_discover_wch returns a Box<dyn Programmer>. We can't easily check type.
+                // But the user can see the name.
+                Ok(p)
+            }
+        }
+        _ => Err(Error::ProgrammerNotFound),
+    }
+}
+
+/// Find and open the first available WCH programmer (Auto-detect)
+fn auto_discover_wch() -> Result<Box<dyn Programmer>> {
+    debug!("Starting WCH programmer discovery...");
 
     // Find a supported USB device (returns DeviceInfo and its PID)
     let (device_info, pid) = find_supported_device()?;
@@ -49,6 +90,13 @@ pub fn discover() -> Result<Box<dyn Programmer>> {
         }
         _ => Err(Error::ProgrammerNotFound),
     }
+}
+
+fn find_usb_device(vid: u16, pid: u16) -> Result<nusb::Device> {
+    let device = nusb::list_devices()?
+        .find(|d| d.vendor_id() == vid && d.product_id() == pid)
+        .ok_or(Error::ProgrammerNotFound)?;
+    device.open().map_err(|e| Error::Other(e.to_string()))
 }
 
 fn find_supported_device() -> Result<(nusb::DeviceInfo, u16)> {

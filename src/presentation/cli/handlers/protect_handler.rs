@@ -29,8 +29,13 @@ impl ProtectHandler {
         }
     }
 
-    pub fn handle_status(&self, value: Option<String>, speed: Option<u8>) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute(speed)?;
+    pub fn handle_status(
+        &self,
+        value: Option<String>,
+        speed: Option<u8>,
+        driver: Option<&str>,
+    ) -> Result<()> {
+        let (programmer, spec) = self.detect_use_case.execute(speed, driver)?;
 
         let status_use_case: Box<dyn crate::domain::FlashOperation> = match spec.flash_type {
             FlashType::Nor => Box::new(SpiNor::new(programmer, spec)),
@@ -64,8 +69,13 @@ impl ProtectHandler {
         Ok(())
     }
 
-    pub fn handle_protect(&self, operation: &str, speed: Option<u8>) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute(speed)?;
+    pub fn handle_protect(
+        &self,
+        operation: &str,
+        speed: Option<u8>,
+        driver: Option<&str>,
+    ) -> Result<()> {
+        let (programmer, spec) = self.detect_use_case.execute(speed, driver)?;
 
         match spec.flash_type {
             FlashType::Nor => {

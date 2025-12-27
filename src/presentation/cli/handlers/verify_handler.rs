@@ -27,7 +27,9 @@ impl VerifyHandler {
     }
 
     pub fn handle(&self, input: PathBuf, options: crate::domain::FlashOptions) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute(options.speed)?;
+        let (programmer, spec) = self
+            .detect_use_case
+            .execute(options.speed, options.driver.as_deref())?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let expected_data = std::fs::read(input).map_err(Error::Io)?;

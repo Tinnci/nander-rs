@@ -103,6 +103,8 @@ pub struct FlashOptions {
     pub retry_count: u32,
     /// Optional bad block table file path
     pub bbt_file: Option<std::path::PathBuf>,
+    /// Optional explicit driver selection
+    pub driver: Option<String>,
 }
 
 impl Default for FlashOptions {
@@ -118,6 +120,7 @@ impl Default for FlashOptions {
             verify: false,
             retry_count: 0,
             bbt_file: None,
+            driver: None,
         }
     }
 }

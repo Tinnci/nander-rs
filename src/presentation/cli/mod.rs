@@ -36,7 +36,7 @@ pub fn execute(args: Args) -> Result<()> {
     match args.command {
         Command::Info => {
             let handler = InfoHandler::new();
-            handler.handle(Some(args.spi_speed))
+            handler.handle(Some(args.spi_speed), Some(&args.driver))
         }
         Command::List => {
             let handler = ListHandler::new();
@@ -67,6 +67,7 @@ pub fn execute(args: Args) -> Result<()> {
                 verify: false,
                 retry_count: retries,
                 bbt_file,
+                driver: Some(args.driver.clone()),
             };
             handler.handle(output, options)
         }
@@ -95,6 +96,7 @@ pub fn execute(args: Args) -> Result<()> {
                 verify,
                 retry_count: retries,
                 bbt_file,
+                driver: Some(args.driver.clone()),
             };
             handler.handle(input, options)
         }
@@ -113,6 +115,7 @@ pub fn execute(args: Args) -> Result<()> {
                 bad_block_strategy: get_bad_block_strategy(skip_bad, include_bad),
                 speed: Some(args.spi_speed),
                 bbt_file,
+                driver: Some(args.driver.clone()),
                 ..Default::default()
             };
             handler.handle(options)
@@ -141,22 +144,23 @@ pub fn execute(args: Args) -> Result<()> {
                 verify: false,
                 retry_count: retries,
                 bbt_file,
+                driver: Some(args.driver.clone()),
             };
             handler.handle(input, options)
         }
         Command::Protect { operation } => {
             let handler = ProtectHandler::new();
-            handler.handle_protect(&operation, Some(args.spi_speed))
+            handler.handle_protect(&operation, Some(args.spi_speed), Some(&args.driver))
         }
         Command::Status { value } => {
             let handler = ProtectHandler::new();
-            handler.handle_status(value, Some(args.spi_speed))
+            handler.handle_status(value, Some(args.spi_speed), Some(&args.driver))
         }
         Command::Bbt { command } => {
             let handler = BbtHandler::new();
             match command {
                 args::BbtCommand::Scan { output } => {
-                    handler.handle_scan(Some(args.spi_speed), output)
+                    handler.handle_scan(Some(args.spi_speed), output, Some(&args.driver))
                 }
                 args::BbtCommand::Load { input } => handler.handle_load(input),
             }
@@ -166,7 +170,7 @@ pub fn execute(args: Args) -> Result<()> {
             use crate::infrastructure::programmer;
 
             // Discover programmer (doesn't need chip detection)
-            let mut prog = programmer::discover()?;
+            let mut prog = programmer::discover(Some(&args.driver))?;
             if let Some(speed) = Some(args.spi_speed) {
                 prog.set_speed(speed)?;
             }
@@ -244,7 +248,7 @@ pub fn execute(args: Args) -> Result<()> {
             }
 
             // Execute the batch script
-            let mut prog = programmer::discover()?;
+            let mut prog = programmer::discover(Some(&args.driver))?;
             if let Some(speed) = Some(args.spi_speed) {
                 prog.set_speed(speed)?;
             }

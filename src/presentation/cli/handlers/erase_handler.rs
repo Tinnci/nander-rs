@@ -29,7 +29,9 @@ impl EraseHandler {
     }
 
     pub fn handle(&self, options: crate::domain::FlashOptions) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute(options.speed)?;
+        let (programmer, spec) = self
+            .detect_use_case
+            .execute(options.speed, options.driver.as_deref())?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let start = options.address;

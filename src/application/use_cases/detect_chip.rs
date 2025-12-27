@@ -16,9 +16,13 @@ impl DetectChipUseCase {
         Self { registry }
     }
 
-    pub fn execute(&self, speed: Option<u8>) -> Result<(Box<dyn Programmer>, ChipSpec)> {
+    pub fn execute(
+        &self,
+        speed: Option<u8>,
+        driver_name: Option<&str>,
+    ) -> Result<(Box<dyn Programmer>, ChipSpec)> {
         // 1. Discover programmer
-        let mut programmer = programmer::discover()?;
+        let mut programmer = programmer::discover(driver_name)?;
 
         // Apply speed if specified
         if let Some(s) = speed {

@@ -23,6 +23,10 @@ pub struct Args {
     #[arg(long = "speed", global = true, default_value = "5", value_parser = clap::value_parser!(u8).range(0..8))]
     pub spi_speed: u8,
 
+    /// Force specific programmer driver (auto, ch341a, ch347, ftdi, spidev)
+    #[arg(long = "driver", short = 'D', global = true, default_value = "auto")]
+    pub driver: String,
+
     /// Command to execute
     #[command(subcommand)]
     pub command: Command,

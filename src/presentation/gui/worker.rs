@@ -49,7 +49,7 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                 }
 
                 // Now attempt connection
-                match crate::infrastructure::programmer::discover() {
+                match crate::infrastructure::programmer::discover(None) {
                     Ok(p) => {
                         let name = p.name().to_string();
                         programmer = Some(p);
