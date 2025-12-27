@@ -39,8 +39,12 @@ pub enum WorkerMessage {
     Progress(Progress),
     /// Operation completed
     OperationComplete,
+    /// Data read from flash (for preview)
+    DataRead(Vec<u8>),
     /// Operation failed
     OperationFailed(String),
     /// Log message
     Log(String),
+    /// List of detected devices (for diagnostic display)
+    DeviceList(Vec<String>),
 }

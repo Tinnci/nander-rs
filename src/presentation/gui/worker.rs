@@ -20,16 +20,46 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
 
     while let Ok(msg) = rx.recv() {
         match msg {
-            GuiMessage::Connect => match crate::infrastructure::programmer::discover() {
-                Ok(p) => {
-                    let name = p.name().to_string();
-                    programmer = Some(p);
-                    tx.send(WorkerMessage::Connected(name)).ok();
+            GuiMessage::Connect => {
+                // First, enumerate devices and send diagnostic info
+                match nusb::list_devices() {
+                    Ok(devices) => {
+                        let wch_devices: Vec<String> = devices
+                            .filter(|d| d.vendor_id() == 0x1A86)
+                            .map(|d| {
+                                let info =
+                                    crate::infrastructure::programmer::WchDeviceDatabase::identify(
+                                        d.vendor_id(),
+                                        d.product_id(),
+                                    );
+                                format!("{}", info)
+                            })
+                            .collect();
+
+                        if !wch_devices.is_empty() {
+                            tx.send(WorkerMessage::DeviceList(wch_devices)).ok();
+                        }
+                    }
+                    Err(_) => {
+                        tx.send(WorkerMessage::Log(
+                            "Failed to enumerate USB devices".to_string(),
+                        ))
+                        .ok();
+                    }
                 }
-                Err(e) => {
-                    tx.send(WorkerMessage::ConnectionFailed(e.to_string())).ok();
+
+                // Now attempt connection
+                match crate::infrastructure::programmer::discover() {
+                    Ok(p) => {
+                        let name = p.name().to_string();
+                        programmer = Some(p);
+                        tx.send(WorkerMessage::Connected(name)).ok();
+                    }
+                    Err(e) => {
+                        tx.send(WorkerMessage::ConnectionFailed(e.to_string())).ok();
+                    }
                 }
-            },
+            }
             GuiMessage::DetectChip => {
                 if let Some(ref mut p) = programmer {
                     let use_case = DetectChipUseCase::new(registry.clone());
@@ -121,7 +151,7 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                         Ok(data) => {
                             match File::create(&path).and_then(|mut f| f.write_all(&data)) {
                                 Ok(_) => {
-                                    tx.send(WorkerMessage::OperationComplete).ok();
+                                    tx.send(WorkerMessage::DataRead(data)).ok();
                                 }
                                 Err(e) => {
                                     tx.send(WorkerMessage::OperationFailed(format!(

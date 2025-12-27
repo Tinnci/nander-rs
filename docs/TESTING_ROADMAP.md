@@ -40,6 +40,10 @@ Simulation is perfect for logic, but cannot catch physical layer issues (timing,
 - [ ] **Benchmarks**: Measure throughput (MB/s) for different block sizes.
 - [ ] **Fuzzing**: Feed garbage data to the packet parsers to ensure robustness.
 
+### 🌓 Future: GUI Testing
+- [ ] **Snapshot Testing**: Prevent UI regressions.
+- [ ] **Worker Integration**: Automated tests for Worker message handling.
+
 ---
 
 ## 🏗️ Testing Infrastructure
