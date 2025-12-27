@@ -1,13 +1,18 @@
 [package]
 name = "nander-rs"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
+rust-version = "1.87"
 authors = ["driezy <shisoratsu@icloud.com>"]
-description = "A modern SPI NAND/NOR Flash programmer written in Rust, primarily for CH341A"
+description = "Modern SPI NAND/NOR Flash programmer for CH341A with cross-platform GUI and comprehensive diagnostics"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tinnci/nander-rs"
+documentation = "https://docs.rs/nander-rs"
+homepage = "https://github.com/tinnci/nander-rs"
+readme = "README.md"
 keywords = ["flash", "spi", "nand", "programmer", "ch341a"]
 categories = ["embedded", "hardware-support", "command-line-utilities"]
+exclude = ["docs/*", "*.txt", ".github/*", "build_errors.txt"]
 
 [dependencies]
 # USB communication (pure Rust, no libusb needed)
