@@ -161,5 +161,8 @@ pub fn execute(args: Args) -> Result<()> {
                 args::BbtCommand::Load { input } => handler.handle_load(input),
             }
         }
+        Command::Gui => {
+            crate::presentation::gui::run().map_err(|e| crate::error::Error::Other(e.to_string()))
+        }
     }
 }

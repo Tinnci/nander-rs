@@ -1,8 +1,8 @@
 # nander-rs Project Roadmap
 
-## 📊 Project Status (v0.4.1)
+## 📊 Project Status (v0.5.0-dev)
 
-`nander-rs` has completed core feature development and has now entered a stability and testing phase. The current version **v0.4.1** focuses on rigorous testing coverage and architectural robustness.
+`nander-rs` has completed core feature development and the initial GUI implementation. The project is now moving towards its first major stable release (v0.5.0), focusing on ecosystem, cross-platform stability, and documentation.
 
 | Module | Status | Completion | Notes |
 |--------|--------|------------|-------|
@@ -13,6 +13,7 @@
 | **SPI NOR** | ✅ Done | 100% | Fast Read, 4-byte Address Mode |
 | **EEPROM** | ✅ Done | 100% | I2C (24Cxx), SPI (25xxx), Microwire (93Cxx) |
 | **Advanced Features** | ✅ Done | 95% | Auto-retry, Write Verification, BBT Scans |
+| **GUI (Beta)** | ✅ Done | 80% | Basic Read/Write/Erase UI tracking |
 
 ---
 
@@ -31,8 +32,8 @@
 - [ ] **Hardware Expansion** (Exploratory)
     - [ ] Raspberry Pi (Linux spidev)
     - [ ] CH347 (High-speed USB-SPI/JTAG)
-- [ ] **GUI Preview**
-    - [ ] Simple chip viewer using `egui`
+- [x] **GUI Preview**
+    - [x] Simple chip viewer and flasher using `egui`
 
 ### v0.4.1: Testing & stability (✅ Completed)
 **Focus**: Ensuring code correctness through comprehensive unit and integration testing.
@@ -76,8 +77,9 @@
 ## 🛠 TODO List
 
 ### Long Term
-1. **GUI Client**
-   - Cross-platform GUI for drag-and-drop programming and hex editing.
+1. **GUI Client Enhancement**
+   - Hex editor integration.
+   - Batch programming support.
 
 2. **Broad Hardware Support**
    - Native linux `spidev` support.
@@ -88,4 +90,4 @@
 
 ---
 
-*Last Updated: 2025-12-27 (v0.4.1)*
+*Last Updated: 2025-12-27 (v0.5.0-dev)*

@@ -1,0 +1,37 @@
+    Checking nander-rs v0.4.0 (C:\Users\shiso\Downloads\nander\nander-rs)
+error: the following explicit lifetimes could be elided: 'a
+   --> src\infrastructure\programmer\traits.rs:193:6
+    |
+193 | impl<'a, P: Programmer + ?Sized> Programmer for &'a mut P {
+    |      ^^                                          ^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#needless_lifetimes
+    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+help: elide the lifetimes
+    |
+193 - impl<'a, P: Programmer + ?Sized> Programmer for &'a mut P {
+193 + impl<P: Programmer + ?Sized> Programmer for &mut P {
+    |
+
+error: stripping a prefix manually
+   --> src\presentation\gui\app.rs:118:33
+    |
+118 |             u32::from_str_radix(&s[2..], 16).ok()
+    |                                 ^^^^^^^
+    |
+note: the prefix was tested here
+   --> src\presentation\gui\app.rs:117:9
+    |
+117 |         if s.starts_with("0x") {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.91.0/index.html#manual_strip
+    = note: `-D clippy::manual-strip` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::manual_strip)]`
+help: try using the `strip_prefix` method
+    |
+117 ~         if let Some(<stripped>) = s.strip_prefix("0x") {
+118 ~             u32::from_str_radix(<stripped>, 16).ok()
+    |
+
+error: could not compile `nander-rs` (lib) due to 2 previous errors

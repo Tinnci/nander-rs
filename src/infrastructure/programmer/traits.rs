@@ -189,3 +189,61 @@ impl Programmer for Box<dyn Programmer> {
         self.as_mut().gpio_get(pin)
     }
 }
+
+impl<P: Programmer + ?Sized> Programmer for &mut P {
+    fn name(&self) -> &str {
+        (**self).name()
+    }
+
+    fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()> {
+        (**self).spi_transfer(tx, rx)
+    }
+
+    fn spi_write(&mut self, data: &[u8]) -> Result<()> {
+        (**self).spi_write(data)
+    }
+
+    fn spi_read(&mut self, len: usize) -> Result<Vec<u8>> {
+        (**self).spi_read(len)
+    }
+
+    fn set_cs(&mut self, active: bool) -> Result<()> {
+        (**self).set_cs(active)
+    }
+
+    fn spi_read_bulk(&mut self, len: usize) -> Result<Vec<u8>> {
+        (**self).spi_read_bulk(len)
+    }
+
+    fn spi_transaction(&mut self, tx: &[u8], rx_len: usize) -> Result<Vec<u8>> {
+        (**self).spi_transaction(tx, rx_len)
+    }
+
+    fn spi_transaction_write(&mut self, tx: &[u8]) -> Result<()> {
+        (**self).spi_transaction_write(tx)
+    }
+
+    fn max_bulk_transfer_size(&self) -> usize {
+        (**self).max_bulk_transfer_size()
+    }
+
+    fn set_speed(&mut self, speed: u8) -> Result<()> {
+        (**self).set_speed(speed)
+    }
+
+    fn i2c_write(&mut self, addr: u8, data: &[u8]) -> Result<()> {
+        (**self).i2c_write(addr, data)
+    }
+
+    fn i2c_read(&mut self, addr: u8, len: usize) -> Result<Vec<u8>> {
+        (**self).i2c_read(addr, len)
+    }
+
+    fn gpio_set(&mut self, pin: u8, level: bool) -> Result<()> {
+        (**self).gpio_set(pin, level)
+    }
+
+    fn gpio_get(&mut self, pin: u8) -> Result<bool> {
+        (**self).gpio_get(pin)
+    }
+}

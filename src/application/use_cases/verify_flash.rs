@@ -89,7 +89,7 @@ mod tests {
     impl FlashOperation for MockFlashReader {
         fn read(
             &mut self,
-            request: ReadRequest,
+            _request: ReadRequest,
             _on_progress: &dyn Fn(Progress),
         ) -> Result<Vec<u8>> {
             // Return slice of mock data if within bounds, else empty or error

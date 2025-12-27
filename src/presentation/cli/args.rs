@@ -226,6 +226,10 @@ pub enum Command {
         #[command(subcommand)]
         command: BbtCommand,
     },
+
+    /// Launch the Graphical User Interface
+    #[command(alias = "g")]
+    Gui,
 }
 
 #[derive(Subcommand, Debug)]

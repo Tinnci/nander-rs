@@ -11,6 +11,7 @@ A complete rewrite of [SNANDer](https://github.com/McMCCRU/SNANDer) in Rust, des
 - **Single binary** - No runtime dependencies, just one executable
 - **Memory safe** - Rust's ownership system prevents buffer overflows and memory corruption
 - **Rich CLI** - Modern command-line interface with progress bars and clear error messages
+- **Cross-platform GUI** - Intuitive graphical interface for interactive flash operations
 - **Extensible** - Trait-based architecture makes it easy to add new programmers or chips
 
 ## 🛠 Supported Hardware
@@ -43,7 +44,12 @@ Download from the [Releases](https://github.com/tinnci/nander-rs/releases) page.
 
 ## 🚀 Usage
 
-### Detect Flash Chip
+### Launch Graphical User Interface
+```bash
+nander gui
+```
+
+### Detect Flash Chip (CLI)
 ```bash
 nander info
 ```

@@ -1,6 +1,7 @@
 use super::{eeprom, nand, nor};
 use crate::domain::{ChipSpec, JedecId};
 
+#[derive(Clone)]
 pub struct ChipRegistry {
     chips: Vec<ChipSpec>,
 }
