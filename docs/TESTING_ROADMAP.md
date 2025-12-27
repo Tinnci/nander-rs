@@ -28,8 +28,8 @@
 
 ### High Priority: Automation & CI
 The current tests run locally. We need to ensure they run on every commit.
-- [ ] **GitHub Actions Workflow**: automated `cargo test` on Push/PR.
-- [ ] **Clippy & FMT Check**: automated linting.
+- [x] **GitHub Actions Workflow**: automated `cargo test` on Push/PR.
+- [x] **Clippy & FMT Check**: automated linting.
 
 ### Medium Priority: Real Hardware Verification
 Simulation is perfect for logic, but cannot catch physical layer issues (timing, electrical noise, USB latency).
