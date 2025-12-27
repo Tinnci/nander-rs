@@ -181,10 +181,17 @@ Run `nander info` to see the JEDEC ID of your chip.
 
 ## 📄 License
 
-MIT OR Apache-2.0 (at your option)
+Licensed under either of:
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+**Note**: This is a clean-room implementation. While inspired by SNANDer's functionality and interface design, `nander-rs` contains no GPL-licensed code. All code was written from scratch in Rust.
 
 ## 🙏 Acknowledgments
 
-- The SNANDer project for the original implementation and protocol documentation
+- **[SNANDer](https://github.com/McMCCRU/SNANDer)** by McMCC - The original C implementation that inspired this project's feature set and CLI design. SNANDer is GPL-licensed; `nander-rs` is an independent reimplementation.
 - The OpenIPC community for testing and feedback
-- The Rust embedded community for excellent libraries
+- The Rust embedded community for excellent libraries (`nusb`, `clap`, `indicatif`, etc.)
+- JEDEC and flash chip manufacturers for public documentation
