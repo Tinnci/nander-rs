@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "nander-rs"
 version = "0.5.2"
 edition = "2021"
@@ -62,3 +62,4 @@ tempfile = "3"
 lto = true
 codegen-units = 1
 strip = true
+
