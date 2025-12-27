@@ -10,13 +10,13 @@ A complete rewrite of [SNANDer](https://github.com/McMCCRU/SNANDer) in Rust, des
 
 ## ✨ Features
 
-- 🔌 **Pure Rust USB** - No `libusb` DLL required
-- 🖥️ **Cross-platform** - Windows, Linux, macOS
-- 📦 **Single binary** - No runtime dependencies
-- 🛡️ **Memory safe** - Rust's ownership system
-- 🎨 **GUI & CLI** - Graphical and command-line interfaces
-- ⚡ **High Speed** - Support for 60MHz SPI (CH347)
-- 🤖 **Batch Mode** - Automate workflows with simple scripts
+- **Pure Rust USB** - No `libusb` DLL required
+- **Cross-platform** - Windows, Linux, macOS
+- **Single binary** - No runtime dependencies
+- **Memory safe** - Rust's ownership system
+- **GUI & CLI** - Graphical and command-line interfaces
+- **High Speed** - Support for 60MHz SPI (CH347)
+- **Batch Mode** - Automate workflows with simple scripts
 
 ## 📦 Installation
 ```bash
