@@ -59,6 +59,38 @@ pub enum SpiSpeed {
     Speed12M = 7,
 }
 
+impl SpiSpeed {
+    /// Create SpiSpeed from a u8 value (0-7)
+    /// Returns default (Medium/3MHz) for invalid values
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Speed208K,
+            1 => Self::Speed100K,
+            2 => Self::Speed400K,
+            3 => Self::Speed750K,
+            4 => Self::Speed1_5M,
+            5 => Self::Medium,
+            6 => Self::Speed6M,
+            7 => Self::Speed12M,
+            _ => Self::default(),
+        }
+    }
+
+    /// Get human-readable speed description
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Speed208K => "~21 kHz",
+            Self::Speed100K => "~100 kHz",
+            Self::Speed400K => "~400 kHz",
+            Self::Speed750K => "~750 kHz",
+            Self::Speed1_5M => "~1.5 MHz",
+            Self::Medium => "~3 MHz",
+            Self::Speed6M => "~6 MHz",
+            Self::Speed12M => "~12 MHz",
+        }
+    }
+}
+
 // ============================================================================
 // Pin Definitions
 // ============================================================================
@@ -143,8 +175,16 @@ pub fn build_gpio_cmd(pin: u8, level: bool) -> Vec<u8> {
     ]
 }
 
-/// Maximum SPI transfer size in one USB packet
+/// Maximum SPI transfer size in one USB packet (standard mode)
 pub const MAX_SPI_TRANSFER_SIZE: usize = 32;
+
+/// Maximum USB bulk transfer size (CH341A hardware limit)
+/// The CH341A can handle larger USB packets, we use 4KB for optimal throughput
+pub const MAX_USB_BULK_SIZE: usize = 4096;
+
+/// Maximum SPI stream size per USB transaction
+/// Account for command byte overhead
+pub const MAX_SPI_STREAM_SIZE: usize = MAX_USB_BULK_SIZE - 1;
 
 // ============================================================================
 // Packet Helpers
@@ -153,4 +193,20 @@ pub const MAX_SPI_TRANSFER_SIZE: usize = 32;
 /// Split a large transfer into CH341A-compatible chunks
 pub fn chunk_transfer(data: &[u8]) -> impl Iterator<Item = &[u8]> {
     data.chunks(MAX_SPI_TRANSFER_SIZE)
+}
+
+/// Split a large transfer into bulk-optimized chunks
+pub fn chunk_transfer_bulk(data: &[u8]) -> impl Iterator<Item = &[u8]> {
+    data.chunks(MAX_SPI_STREAM_SIZE)
+}
+
+/// Build a bulk SPI stream command for larger transfers
+///
+/// This allows reading more data in a single USB transaction
+pub fn build_spi_stream_cmd(len: usize) -> Vec<u8> {
+    // For reading, we send 0xFF bytes which the flash ignores
+    let mut cmd = Vec::with_capacity(len + 1);
+    cmd.push(CMD_SPI_STREAM);
+    cmd.resize(len + 1, 0xFF);
+    cmd
 }

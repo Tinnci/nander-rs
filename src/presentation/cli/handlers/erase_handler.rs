@@ -34,8 +34,9 @@ impl EraseHandler {
         start: u32,
         length: Option<u32>,
         strategy: BadBlockStrategy,
+        speed: Option<u8>,
     ) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute(speed)?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let erase_len = length.unwrap_or(spec.capacity.as_bytes() - start);

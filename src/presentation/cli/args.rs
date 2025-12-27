@@ -18,6 +18,11 @@ pub struct Args {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
+    /// SPI speed setting (0=~21kHz, 1=~100kHz, 2=~400kHz, 3=~750kHz, 4=~1.5MHz, 5=~3MHz, 6=~6MHz, 7=~12MHz)
+    /// Higher speeds may not work with all chips. Default: 5 (~3MHz)
+    #[arg(long = "speed", global = true, default_value = "5", value_parser = clap::value_parser!(u8).range(0..8))]
+    pub spi_speed: u8,
+
     /// Command to execute
     #[command(subcommand)]
     pub command: Command,

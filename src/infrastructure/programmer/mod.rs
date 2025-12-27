@@ -5,6 +5,9 @@
 pub mod ch341a;
 pub mod traits;
 
+#[cfg(test)]
+pub mod mock;
+
 pub use ch341a::Ch341a;
 pub use traits::Programmer;
 

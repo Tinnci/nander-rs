@@ -16,9 +16,14 @@ impl DetectChipUseCase {
         Self { registry }
     }
 
-    pub fn execute(&self) -> Result<(Box<dyn Programmer>, ChipSpec)> {
+    pub fn execute(&self, speed: Option<u8>) -> Result<(Box<dyn Programmer>, ChipSpec)> {
         // 1. Discover programmer
         let mut programmer = programmer::discover()?;
+
+        // Apply speed if specified
+        if let Some(s) = speed {
+            programmer.set_speed(s)?;
+        }
 
         // 2. Read JEDEC ID
         programmer.set_cs(true)?;

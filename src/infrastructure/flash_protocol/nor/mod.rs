@@ -2,6 +2,9 @@
 //!
 //! This module implements the SPI NOR protocol according to infrastructure standards.
 
+#[cfg(test)]
+mod tests;
+
 use std::time::{Duration, Instant};
 
 use crate::domain::chip::ChipSpec;
@@ -28,6 +31,11 @@ impl<P: Programmer> SpiNor<P> {
         &self.spec
     }
 
+    /// Get mutable access to the programmer (for testing)
+    #[cfg(test)]
+    pub fn programmer_mut(&mut self) -> &mut P {
+        &mut self.programmer
+    }
     // =========================================================================
     // Internal Helper Methods
     // =========================================================================
@@ -66,6 +74,7 @@ impl<P: Programmer> SpiNor<P> {
         [(addr >> 16) as u8, (addr >> 8) as u8, addr as u8]
     }
 
+    #[allow(dead_code)]
     fn read_internal(&mut self, address: u32, len: usize) -> Result<Vec<u8>> {
         let addr_bytes = self.addr_to_bytes(address);
         self.programmer.set_cs(true)?;
@@ -79,23 +88,38 @@ impl<P: Programmer> SpiNor<P> {
 
 impl<P: Programmer> FlashOperation for SpiNor<P> {
     fn read(&mut self, request: ReadRequest, on_progress: &dyn Fn(Progress)) -> Result<Vec<u8>> {
-        // NOR flash supports arbitrary address reads
+        // NOR flash supports arbitrary address reads with continuous read mode
         let address = request.address.as_u32();
         let length = request.length as usize;
 
-        // Read in chunks for progress reporting
-        const CHUNK_SIZE: usize = 4096;
+        // Use larger chunks for better throughput
+        // The programmer's max_bulk_transfer_size tells us the optimal chunk size
+        let chunk_size = self.programmer.max_bulk_transfer_size().min(32 * 1024);
+
         let mut result = Vec::with_capacity(length);
         let mut remaining = length;
         let mut current_addr = address;
 
         while remaining > 0 {
-            let chunk_size = remaining.min(CHUNK_SIZE);
-            let chunk = self.read_internal(current_addr, chunk_size)?;
+            let read_size = remaining.min(chunk_size);
+
+            // Use Fast Read command (0x0B) with dummy byte for higher speed
+            // Format: CMD + 3-byte addr + 1 dummy byte, then read data
+            let addr_bytes = self.addr_to_bytes(current_addr);
+            let cmd = [
+                CMD_NOR_FAST_READ,
+                addr_bytes[0],
+                addr_bytes[1],
+                addr_bytes[2],
+                0x00,
+            ];
+
+            // Use optimized spi_transaction for bulk read
+            let chunk = self.programmer.spi_transaction(&cmd, read_size)?;
             result.extend_from_slice(&chunk);
 
-            remaining -= chunk_size;
-            current_addr += chunk_size as u32;
+            remaining -= read_size;
+            current_addr += read_size as u32;
 
             on_progress(Progress::new(result.len() as u64, length as u64));
         }

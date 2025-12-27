@@ -23,10 +23,10 @@ impl InfoHandler {
         }
     }
 
-    pub fn handle(&self) -> Result<()> {
+    pub fn handle(&self, speed: Option<u8>) -> Result<()> {
         println!("Detecting flash chip...");
 
-        match self.use_case.execute() {
+        match self.use_case.execute(speed) {
             Ok((programmer, spec)) => {
                 println!("Programmer:   {}", programmer.name());
                 println!("----------------------------------");

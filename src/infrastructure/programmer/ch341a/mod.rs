@@ -66,8 +66,8 @@ impl Ch341a {
         Ok(data)
     }
 
-    /// Set SPI speed
-    pub fn set_speed(&mut self, speed: SpiSpeed) -> Result<()> {
+    /// Set SPI speed internally
+    fn set_speed_internal(&mut self, speed: SpiSpeed) -> Result<()> {
         self.speed = speed;
         self.configure_spi()
     }
@@ -83,8 +83,7 @@ impl Programmer for Ch341a {
             return Ok(());
         }
 
-        // CH341A has a 32-byte SPI transfer limit per packet
-        // We handle chunking here to satisfy the trait
+        // CH341A has a 32-byte SPI transfer limit per packet for standard transfer
         for (tx_chunk, rx_chunk) in tx_data.chunks(32).zip(rx_data.chunks_mut(32)) {
             let cmd = protocol::build_spi_transfer_cmd(tx_chunk);
             self.bulk_write(&cmd)?;
@@ -99,5 +98,78 @@ impl Programmer for Ch341a {
         let cmd = protocol::build_cs_cmd(active);
         self.bulk_write(&cmd)?;
         Ok(())
+    }
+
+    /// Optimized bulk SPI read for large data transfers.
+    ///
+    /// Uses larger USB packets to reduce USB overhead significantly.
+    /// For a 2KB page read:
+    /// - Standard mode: 64 USB transactions
+    /// - Bulk mode: ~1 USB transaction
+    fn spi_read_bulk(&mut self, len: usize) -> Result<Vec<u8>> {
+        if len == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut result = Vec::with_capacity(len);
+
+        // Use larger chunks for bulk transfer (up to 4KB per USB transaction)
+        for chunk_size in
+            std::iter::repeat(protocol::MAX_SPI_STREAM_SIZE).scan(len, |remaining, chunk| {
+                if *remaining == 0 {
+                    None
+                } else {
+                    let size = (*remaining).min(chunk);
+                    *remaining -= size;
+                    Some(size)
+                }
+            })
+        {
+            let cmd = protocol::build_spi_stream_cmd(chunk_size);
+            self.bulk_write(&cmd)?;
+            let response = self.bulk_read(chunk_size)?;
+            result.extend_from_slice(&response);
+        }
+
+        Ok(result)
+    }
+
+    /// Execute a complete SPI transaction with embedded CS control.
+    ///
+    /// More efficient than separate calls as it reduces USB round-trips.
+    fn spi_transaction(&mut self, tx: &[u8], rx_len: usize) -> Result<Vec<u8>> {
+        self.set_cs(true)?;
+
+        // Write command/address
+        if !tx.is_empty() {
+            self.spi_write(tx)?;
+        }
+
+        // Read response using bulk method for large reads
+        let rx = if rx_len > protocol::MAX_SPI_TRANSFER_SIZE * 2 {
+            self.spi_read_bulk(rx_len)?
+        } else {
+            self.spi_read(rx_len)?
+        };
+
+        self.set_cs(false)?;
+        Ok(rx)
+    }
+
+    fn spi_transaction_write(&mut self, tx: &[u8]) -> Result<()> {
+        self.set_cs(true)?;
+        self.spi_write(tx)?;
+        self.set_cs(false)?;
+        Ok(())
+    }
+
+    fn max_bulk_transfer_size(&self) -> usize {
+        protocol::MAX_SPI_STREAM_SIZE
+    }
+
+    fn set_speed(&mut self, speed: u8) -> Result<()> {
+        let spi_speed = SpiSpeed::from_u8(speed);
+        debug!("Setting SPI speed to: {}", spi_speed.description());
+        self.set_speed_internal(spi_speed)
     }
 }

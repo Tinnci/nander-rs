@@ -37,6 +37,13 @@ hex = "0.4"
 name = "nander"
 path = "src/main.rs"
 
+[dev-dependencies]
+# Mocking framework for unit tests
+mockall = "0.13"
+
+# Tempfile for test file operations
+tempfile = "3"
+
 [profile.release]
 lto = true
 codegen-units = 1

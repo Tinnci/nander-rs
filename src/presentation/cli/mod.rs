@@ -36,7 +36,7 @@ pub fn execute(args: Args) -> Result<()> {
     match args.command {
         Command::Info => {
             let handler = InfoHandler::new();
-            handler.handle()
+            handler.handle(Some(args.spi_speed))
         }
         Command::List => {
             let handler = ListHandler::new();
@@ -64,6 +64,7 @@ pub fn execute(args: Args) -> Result<()> {
                 ignore_ecc,
                 strategy,
                 oob_mode,
+                Some(args.spi_speed),
             )
         }
         Command::Write {
@@ -88,6 +89,7 @@ pub fn execute(args: Args) -> Result<()> {
                 ignore_ecc,
                 strategy,
                 oob_mode,
+                Some(args.spi_speed),
             )
         }
         Command::Erase {
@@ -99,7 +101,7 @@ pub fn execute(args: Args) -> Result<()> {
         } => {
             let handler = EraseHandler::new();
             let strategy = get_bad_block_strategy(skip_bad, include_bad);
-            handler.handle(start, length, strategy)
+            handler.handle(start, length, strategy, Some(args.spi_speed))
         }
         Command::Verify {
             input,
@@ -114,7 +116,15 @@ pub fn execute(args: Args) -> Result<()> {
             let handler = VerifyHandler::new();
             let strategy = get_bad_block_strategy(skip_bad, include_bad);
             let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(input, start, disable_ecc, ignore_ecc, strategy, oob_mode)
+            handler.handle(
+                input,
+                start,
+                disable_ecc,
+                ignore_ecc,
+                strategy,
+                oob_mode,
+                Some(args.spi_speed),
+            )
         }
     }
 }

@@ -40,8 +40,9 @@ impl WriteHandler {
         ignore_ecc: bool,
         strategy: BadBlockStrategy,
         oob_mode: OobMode,
+        speed: Option<u8>,
     ) -> Result<()> {
-        let (programmer, spec) = self.detect_use_case.execute()?;
+        let (programmer, spec) = self.detect_use_case.execute(speed)?;
         println!("Detected chip: {} ({})", spec.name, spec.manufacturer);
 
         let data = fs::read(input).map_err(Error::Io)?;

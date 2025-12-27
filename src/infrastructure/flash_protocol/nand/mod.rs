@@ -2,6 +2,9 @@
 //!
 //! This module implements the SPI NAND protocol according to infrastructure standards.
 
+#[cfg(test)]
+mod tests;
+
 use std::time::{Duration, Instant};
 
 use crate::domain::bad_block::BadBlockStrategy;
@@ -24,6 +27,13 @@ impl<P: Programmer> SpiNand<P> {
     /// Get chip specification
     pub fn spec(&self) -> &ChipSpec {
         &self.spec
+    }
+
+    /// Get mutable access to the programmer (for testing)
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub fn programmer_mut(&mut self) -> &mut P {
+        &mut self.programmer
     }
 
     // =========================================================================
@@ -87,27 +97,30 @@ impl<P: Programmer> SpiNand<P> {
 
     fn read_page_internal(&mut self, page: u32, column: u16, len: usize) -> Result<Vec<u8>> {
         // Step 1: Page Read to Cache (13h + row address)
+        // Use spi_transaction_write for single USB round-trip
         let row_addr = self.page_to_row_addr(page);
-        self.programmer.set_cs(true)?;
-        self.programmer
-            .spi_write(&[CMD_NAND_PAGE_READ, row_addr[0], row_addr[1], row_addr[2]])?;
-        self.programmer.set_cs(false)?;
+        self.programmer.spi_transaction_write(&[
+            CMD_NAND_PAGE_READ,
+            row_addr[0],
+            row_addr[1],
+            row_addr[2],
+        ])?;
 
         // Wait for page to be loaded into cache
         self.wait_ready()?;
 
-        // Step 2: Read from Cache (03h/0Bh + column address + dummy)
+        // Step 2: Read from Cache (03h + column address + dummy)
+        // Use optimized spi_transaction for bulk read
         let col_addr = self.column_to_addr(column);
-        self.programmer.set_cs(true)?;
-        self.programmer.spi_write(&[
+        let cmd = [
             CMD_NAND_READ_CACHE,
             col_addr[0],
             col_addr[1],
             0x00, // Dummy byte
-        ])?;
+        ];
 
-        let data = self.programmer.spi_read(len)?;
-        self.programmer.set_cs(false)?;
+        // Use spi_transaction which will use bulk read for large transfers
+        let data = self.programmer.spi_transaction(&cmd, len)?;
         Ok(data)
     }
 
