@@ -11,6 +11,8 @@ pub struct ReadRequest {
     pub address: Address,
     pub length: u32,
     pub use_ecc: bool,
+    /// Ignore ECC errors and continue reading (for data recovery)
+    pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
 }
@@ -32,6 +34,8 @@ pub struct WriteRequest<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub verify: bool,
+    /// Ignore ECC errors during verification read back
+    pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
 }

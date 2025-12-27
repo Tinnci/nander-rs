@@ -51,11 +51,20 @@ pub fn execute(args: Args) -> Result<()> {
             include_bad,
             oob,
             oob_only,
+            ignore_ecc,
         } => {
             let handler = ReadHandler::new();
             let strategy = get_bad_block_strategy(skip_bad, include_bad);
             let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(output, start, length, disable_ecc, strategy, oob_mode)
+            handler.handle(
+                output,
+                start,
+                length,
+                disable_ecc,
+                ignore_ecc,
+                strategy,
+                oob_mode,
+            )
         }
         Command::Write {
             input,
@@ -66,11 +75,20 @@ pub fn execute(args: Args) -> Result<()> {
             include_bad,
             oob,
             oob_only,
+            ignore_ecc,
         } => {
             let handler = WriteHandler::new();
             let strategy = get_bad_block_strategy(skip_bad, include_bad);
             let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(input, start, verify, disable_ecc, strategy, oob_mode)
+            handler.handle(
+                input,
+                start,
+                verify,
+                disable_ecc,
+                ignore_ecc,
+                strategy,
+                oob_mode,
+            )
         }
         Command::Erase {
             length,
@@ -91,11 +109,12 @@ pub fn execute(args: Args) -> Result<()> {
             include_bad,
             oob,
             oob_only,
+            ignore_ecc,
         } => {
             let handler = VerifyHandler::new();
             let strategy = get_bad_block_strategy(skip_bad, include_bad);
             let oob_mode = get_oob_mode(oob, oob_only);
-            handler.handle(input, start, disable_ecc, strategy, oob_mode)
+            handler.handle(input, start, disable_ecc, ignore_ecc, strategy, oob_mode)
         }
     }
 }

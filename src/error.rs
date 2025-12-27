@@ -48,6 +48,10 @@ pub enum Error {
     #[error("Read failed at address 0x{address:08X}")]
     ReadFailed { address: u32 },
 
+    /// ECC error (uncorrectable)
+    #[error("Uncorrectable ECC error at address 0x{address:08X}")]
+    EccError { address: u32 },
+
     /// Bad block detected
     #[error("Bad block detected at block {block}")]
     BadBlock { block: u32 },

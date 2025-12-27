@@ -106,6 +106,25 @@ pub const STATUS_NAND_E_FAIL: u8 = 0x04;
 /// SPI NAND Status Register - Program Fail (P_FAIL)
 pub const STATUS_NAND_P_FAIL: u8 = 0x08;
 
+/// SPI NAND Status Register - ECC Status bits (ECCS0, ECCS1)
+/// 00 = No errors
+/// 01 = 1-4 bit errors corrected
+/// 10 = More than 4 bits corrected (some chips report as uncorrectable)
+/// 11 = Uncorrectable errors
+pub const STATUS_NAND_ECC_MASK: u8 = 0x30;
+
+/// ECC Status: No errors detected
+pub const STATUS_NAND_ECC_OK: u8 = 0x00;
+
+/// ECC Status: Errors corrected
+pub const STATUS_NAND_ECC_CORRECTED: u8 = 0x10;
+
+/// ECC Status: Errors corrected (alternate, some chips)
+pub const STATUS_NAND_ECC_CORRECTED_ALT: u8 = 0x20;
+
+/// ECC Status: Uncorrectable errors
+pub const STATUS_NAND_ECC_UNCORRECTABLE: u8 = 0x30;
+
 /// SPI NOR Status Register - Write In Progress (WIP)
 pub const STATUS_NOR_WIP: u8 = 0x01;
 

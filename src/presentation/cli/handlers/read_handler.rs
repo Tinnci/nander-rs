@@ -37,6 +37,7 @@ impl ReadHandler {
         start: u32,
         length: Option<u32>,
         disable_ecc: bool,
+        ignore_ecc: bool,
         strategy: BadBlockStrategy,
         oob_mode: OobMode,
     ) -> Result<()> {
@@ -50,6 +51,7 @@ impl ReadHandler {
             address: start,
             length: read_len,
             use_ecc: !disable_ecc,
+            ignore_ecc_errors: ignore_ecc,
             oob_mode,
             bad_block_strategy: strategy,
         };

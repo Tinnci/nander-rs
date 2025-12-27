@@ -131,6 +131,25 @@ impl<P: Programmer> SpiNand<P> {
 
         Ok(false)
     }
+
+    fn check_ecc_status(&mut self, page: u32) -> Result<()> {
+        let status = self.get_feature(FEATURE_STATUS)?;
+        let ecc_status = status & STATUS_NAND_ECC_MASK;
+
+        match ecc_status {
+            STATUS_NAND_ECC_UNCORRECTABLE => {
+                log::error!("Uncorrectable ECC error at page {}", page);
+                Err(Error::EccError {
+                    address: page * self.spec.layout.page_size,
+                })
+            }
+            STATUS_NAND_ECC_CORRECTED | STATUS_NAND_ECC_CORRECTED_ALT => {
+                log::warn!("Corrected ECC errors at page {}", page);
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
 }
 
 impl<P: Programmer> FlashOperation for SpiNand<P> {
@@ -162,23 +181,34 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             let current_block = current_page / pages_per_block;
 
             if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)? {
-                    match request.bad_block_strategy {
-                        BadBlockStrategy::Skip => {
-                            // Skip the entire block
-                            current_page = (current_block + 1) * pages_per_block;
-                            continue;
-                        }
-                        BadBlockStrategy::Fail => {
-                            return Err(Error::BadBlock {
-                                block: current_block,
-                            });
-                        }
-                        _ => {}
+                && self.is_bad_block(current_block)?
+            {
+                match request.bad_block_strategy {
+                    BadBlockStrategy::Skip => {
+                        // Skip the entire block
+                        current_page = (current_block + 1) * pages_per_block;
+                        continue;
                     }
+                    BadBlockStrategy::Fail => {
+                        return Err(Error::BadBlock {
+                            block: current_block,
+                        });
+                    }
+                    _ => {}
                 }
+            }
 
             let chunk = self.read_page_internal(current_page, col_offset, read_len_per_page)?;
+
+            // Check ECC status if requested
+            if request.use_ecc && !request.ignore_ecc_errors {
+                self.check_ecc_status(current_page)?;
+            } else if request.use_ecc && request.ignore_ecc_errors {
+                // Just log if ignored
+                if let Err(e) = self.check_ecc_status(current_page) {
+                    log::debug!("Ignored ECC error: {}", e);
+                }
+            }
 
             let to_copy = remaining.min(chunk.len());
             result.extend_from_slice(&chunk[..to_copy]);
@@ -229,21 +259,22 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
             let current_block = current_page / pages_per_block;
 
             if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)? {
-                    match request.bad_block_strategy {
-                        BadBlockStrategy::Skip => {
-                            // Skip the entire block
-                            current_page = (current_block + 1) * pages_per_block;
-                            continue;
-                        }
-                        BadBlockStrategy::Fail => {
-                            return Err(Error::BadBlock {
-                                block: current_block,
-                            });
-                        }
-                        _ => {}
+                && self.is_bad_block(current_block)?
+            {
+                match request.bad_block_strategy {
+                    BadBlockStrategy::Skip => {
+                        // Skip the entire block
+                        current_page = (current_block + 1) * pages_per_block;
+                        continue;
                     }
+                    BadBlockStrategy::Fail => {
+                        return Err(Error::BadBlock {
+                            block: current_block,
+                        });
+                    }
+                    _ => {}
                 }
+            }
 
             let chunk_end = (offset + write_len_per_page).min(data_len);
             let mut page_buf = vec![0xFFu8; write_len_per_page];
@@ -287,7 +318,23 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         }
 
         if request.verify {
-            // Self-verify could be implemented here by calling read and comparing
+            // Self-verify by reading back
+            let verify_req = ReadRequest {
+                address: request.address,
+                length: request.data.len() as u32,
+                use_ecc: request.use_ecc,
+                ignore_ecc_errors: request.ignore_ecc_errors,
+                oob_mode: request.oob_mode,
+                bad_block_strategy: request.bad_block_strategy,
+            };
+            let read_back = self.read(verify_req, &|_| {})?;
+            if read_back != request.data {
+                return Err(Error::VerificationFailed {
+                    address: request.address.as_u32(), // Simplified, real verify usually finds exact byte
+                    expected: 0,                       // Simplified
+                    actual: 0,                         // Simplified
+                });
+            }
         }
 
         Ok(())
@@ -312,22 +359,23 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
 
         while blocks_erased < total_blocks {
             if request.bad_block_strategy != BadBlockStrategy::Include
-                && self.is_bad_block(current_block)? {
-                    match request.bad_block_strategy {
-                        BadBlockStrategy::Skip => {
-                            // Go to next block without incrementing blocks_erased count?
-                            // Actually, if we skip, we usually want to erase the NEXT good block to satisfy the request.
-                            current_block += 1;
-                            continue;
-                        }
-                        BadBlockStrategy::Fail => {
-                            return Err(Error::BadBlock {
-                                block: current_block,
-                            });
-                        }
-                        _ => {}
+                && self.is_bad_block(current_block)?
+            {
+                match request.bad_block_strategy {
+                    BadBlockStrategy::Skip => {
+                        // Go to next block without incrementing blocks_erased count?
+                        // Actually, if we skip, we usually want to erase the NEXT good block to satisfy the request.
+                        current_block += 1;
+                        continue;
                     }
+                    BadBlockStrategy::Fail => {
+                        return Err(Error::BadBlock {
+                            block: current_block,
+                        });
+                    }
+                    _ => {}
                 }
+            }
 
             let page = current_block * (block_size / page_size);
 

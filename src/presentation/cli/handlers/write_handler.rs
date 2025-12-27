@@ -37,6 +37,7 @@ impl WriteHandler {
         start: u32,
         verify: bool,
         disable_ecc: bool,
+        ignore_ecc: bool,
         strategy: BadBlockStrategy,
         oob_mode: OobMode,
     ) -> Result<()> {
@@ -55,6 +56,7 @@ impl WriteHandler {
             data: &data,
             use_ecc: !disable_ecc,
             verify,
+            ignore_ecc_errors: ignore_ecc,
             oob_mode,
             bad_block_strategy: strategy,
         };

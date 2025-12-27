@@ -11,6 +11,8 @@ pub struct WriteParams<'a> {
     pub data: &'a [u8],
     pub use_ecc: bool,
     pub verify: bool,
+    /// Ignore ECC errors during verification read back
+    pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
 }
@@ -36,6 +38,7 @@ impl<F: FlashOperation> WriteFlashUseCase<F> {
             data: params.data,
             use_ecc: params.use_ecc,
             verify: params.verify,
+            ignore_ecc_errors: params.ignore_ecc_errors,
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
         };

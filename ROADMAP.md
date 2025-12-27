@@ -256,7 +256,7 @@
 
 ## 🔗 参考资源
 
-- [SNANDer 源码](../SNANDer/src/) - 原始 C 实现
+- [SNANDer 源码](https://github.com/McMCCRU/SNANDer/src) - 原始 C 实现
 - [CH341A 数据手册](http://www.wch.cn/products/CH341.html)
 - [nusb 库文档](https://docs.rs/nusb)
 - [SPI NAND 规范](https://www.jedec.org/)

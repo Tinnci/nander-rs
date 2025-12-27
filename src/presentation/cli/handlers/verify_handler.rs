@@ -32,6 +32,7 @@ impl VerifyHandler {
         input: PathBuf,
         start: u32,
         disable_ecc: bool,
+        ignore_ecc: bool,
         strategy: BadBlockStrategy,
         oob_mode: OobMode,
     ) -> Result<()> {
@@ -47,6 +48,7 @@ impl VerifyHandler {
             address: start,
             data: &expected_data,
             use_ecc: !disable_ecc,
+            ignore_ecc_errors: ignore_ecc,
             oob_mode,
             bad_block_strategy: strategy,
         };

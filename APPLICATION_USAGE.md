@@ -46,10 +46,12 @@ let mut read_use_case = ReadFlashUseCase::new(flash);
 
 // 设置读取参数
 let params = ReadParams {
-    address: 0x0,           // 起始地址
-    length: 2048,           // 读取长度
-    use_ecc: true,          // 使用 ECC
-    oob_mode: OobMode::None // 不包含 OOB 数据
+    address: 0x0,               // 起始地址
+    length: 2048,               // 读取长度
+    use_ecc: true,              // 使用 ECC
+    ignore_ecc_errors: false,   // 是否忽略 ECC 错误（用于数据恢复）
+    oob_mode: OobMode::None,    // 不包含 OOB 数据
+    bad_block_strategy: BadBlockStrategy::Skip // 坏块处理策略
 };
 
 // 执行读取，带进度回调
@@ -73,10 +75,13 @@ let data = vec![0xFF; 2048];
 
 // 设置写入参数
 let params = WriteParams {
-    address: 0x0,    // 起始地址
-    data: &data,     // 数据
-    use_ecc: true,   // 使用 ECC
-    verify: true,    // 写入后验证
+    address: 0x0,               // 起始地址
+    data: &data,                // 数据
+    use_ecc: true,              // 使用 ECC
+    verify: true,               // 写入后验证
+    ignore_ecc_errors: false,   // 验证读取时是否忽略 ECC 错误
+    oob_mode: OobMode::None,    // OOB 模式
+    bad_block_strategy: BadBlockStrategy::Skip, // 坏块处理策略
 };
 
 // 执行写入
@@ -97,8 +102,9 @@ let mut erase_use_case = EraseFlashUseCase::new(flash);
 
 // 设置擦除参数
 let params = EraseParams {
-    address: 0x0,        // 起始地址（必须块对齐）
-    length: 128 * 1024,  // 擦除长度（块大小的倍数）
+    address: 0x0,               // 起始地址（必须块对齐）
+    length: 128 * 1024,         // 擦除长度（块大小的倍数）
+    bad_block_strategy: BadBlockStrategy::Skip, // 坏块处理策略
 };
 
 // 执行擦除
@@ -122,10 +128,12 @@ let expected_data = vec![0xFF; 2048];
 
 // 设置验证参数
 let params = VerifyParams {
-    address: 0x0,          // 起始地址
-    data: &expected_data,  // 期望数据
-    use_ecc: true,         // 使用 ECC
-    oob_mode: OobMode::None,
+    address: 0x0,               // 起始地址
+    data: &expected_data,       // 期望数据
+    use_ecc: true,              // 使用 ECC
+    ignore_ecc_errors: false,   // 是否忽略 ECC 错误
+    oob_mode: OobMode::None,    // OOB 模式
+    bad_block_strategy: BadBlockStrategy::Skip, // 坏块处理策略
 };
 
 // 执行验证
@@ -163,7 +171,9 @@ fn main() -> Result<()> {
             address: 0,
             length: 2048,
             use_ecc: true,
+            ignore_ecc_errors: false,
             oob_mode: OobMode::None,
+            bad_block_strategy: BadBlockStrategy::Skip,
         },
         |p| println!("读取: {:.0}%", p.percentage())
     )?;

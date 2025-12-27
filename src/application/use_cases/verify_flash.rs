@@ -10,6 +10,8 @@ pub struct VerifyParams<'a> {
     pub address: u32,
     pub data: &'a [u8],
     pub use_ecc: bool,
+    /// Ignore ECC errors and continue reading (for data recovery)
+    pub ignore_ecc_errors: bool,
     pub oob_mode: OobMode,
     pub bad_block_strategy: BadBlockStrategy,
 }
@@ -34,6 +36,7 @@ impl<F: FlashOperation> VerifyFlashUseCase<F> {
             address: Address::new(params.address),
             length: params.data.len() as u32,
             use_ecc: params.use_ecc,
+            ignore_ecc_errors: params.ignore_ecc_errors,
             oob_mode: params.oob_mode,
             bad_block_strategy: params.bad_block_strategy,
         };

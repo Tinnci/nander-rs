@@ -5,7 +5,10 @@
 use std::time::{Duration, Instant};
 
 use crate::domain::chip::ChipSpec;
-use crate::domain::{EraseRequest, FlashOperation, Progress, ReadRequest, WriteRequest};
+use crate::domain::{
+    bad_block::BadBlockStrategy, EraseRequest, FlashOperation, OobMode, Progress, ReadRequest,
+    WriteRequest,
+};
 use crate::error::{Error, Result};
 use crate::infrastructure::flash_protocol::commands::*;
 use crate::infrastructure::programmer::Programmer;
@@ -137,7 +140,22 @@ impl<P: Programmer> FlashOperation for SpiNor<P> {
         }
 
         if request.verify {
-            // Self-verify could be implemented here
+            let verify_req = ReadRequest {
+                address: request.address,
+                length: request.data.len() as u32,
+                use_ecc: request.use_ecc,
+                ignore_ecc_errors: request.ignore_ecc_errors,
+                oob_mode: OobMode::None,
+                bad_block_strategy: BadBlockStrategy::Fail,
+            };
+            let read_back = self.read(verify_req, &|_| {})?;
+            if read_back != request.data {
+                return Err(Error::VerificationFailed {
+                    address: request.address.as_u32(),
+                    expected: 0,
+                    actual: 0,
+                });
+            }
         }
 
         Ok(())

@@ -68,6 +68,10 @@ pub enum Command {
         /// Read ONLY OOB data (NAND only)
         #[arg(short = 'O', long = "oob-only")]
         oob_only: bool,
+
+        /// Ignore ECC errors and continue reading (NAND only)
+        #[arg(short = 'I', long = "ignore-ecc")]
+        ignore_ecc: bool,
     },
 
     /// Write a file to flash
@@ -104,6 +108,10 @@ pub enum Command {
         /// Write ONLY OOB data (NAND only)
         #[arg(short = 'O', long = "oob-only")]
         oob_only: bool,
+
+        /// Ignore ECC errors during verify (NAND only)
+        #[arg(short = 'I', long = "ignore-ecc")]
+        ignore_ecc: bool,
     },
 
     /// Erase flash contents
@@ -160,5 +168,9 @@ pub enum Command {
         /// Verify ONLY OOB data (NAND only)
         #[arg(short = 'O', long = "oob-only")]
         oob_only: bool,
+
+        /// Ignore ECC errors and continue verifying (NAND only)
+        #[arg(short = 'I', long = "ignore-ecc")]
+        ignore_ecc: bool,
     },
 }
