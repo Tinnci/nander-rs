@@ -53,3 +53,70 @@ impl<F: FlashOperation> WriteFlashUseCase<F> {
         self.flash.write(request, &on_progress)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{EraseRequest, FlashOperation, Progress, ReadRequest, WriteRequest};
+    use crate::error::Result;
+    use std::cell::RefCell;
+
+    struct MockFlashSpy {
+        pub last_write_request: RefCell<Option<Vec<u8>>>, // storing just data or partial req for check
+        pub last_addr: RefCell<u32>,
+    }
+
+    impl MockFlashSpy {
+        fn new() -> Self {
+            Self {
+                last_write_request: RefCell::new(None),
+                last_addr: RefCell::new(0),
+            }
+        }
+    }
+
+    impl FlashOperation for MockFlashSpy {
+        fn read(
+            &mut self,
+            _request: ReadRequest,
+            _on_progress: &dyn Fn(Progress),
+        ) -> Result<Vec<u8>> {
+            Ok(vec![])
+        }
+
+        fn write(&mut self, request: WriteRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            *self.last_write_request.borrow_mut() = Some(request.data.to_vec());
+            *self.last_addr.borrow_mut() = request.address.as_u32();
+            Ok(())
+        }
+        fn erase(&mut self, _request: EraseRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_write_flash_use_case() {
+        let flash = MockFlashSpy::new();
+        let mut use_case = WriteFlashUseCase::new(flash);
+
+        let data = vec![0xDE, 0xAD, 0xBE, 0xEF];
+        let params = WriteParams {
+            address: 0x2000,
+            data: &data,
+            use_ecc: true,
+            verify: true,
+            ignore_ecc_errors: true,
+            oob_mode: OobMode::None,
+            bad_block_strategy: BadBlockStrategy::Fail,
+            bbt: None,
+            retry_count: 0,
+        };
+
+        let result = use_case.execute(params, |_| {});
+        assert!(result.is_ok());
+
+        assert_eq!(use_case.flash.last_addr.borrow().clone(), 0x2000);
+        let written_data = use_case.flash.last_write_request.borrow();
+        assert_eq!(written_data.as_ref().unwrap(), &data);
+    }
+}

@@ -191,3 +191,81 @@ impl Progress {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_capacity_creation_and_conversion() {
+        let cap_bytes = Capacity::bytes(1024);
+        assert_eq!(cap_bytes.as_bytes(), 1024);
+
+        let cap_mb = Capacity::megabytes(1);
+        assert_eq!(cap_mb.as_bytes(), 1024 * 1024);
+        assert_eq!(cap_mb.as_megabytes(), 1);
+
+        let cap_gb_bits = Capacity::gigabits(1);
+        // 1 Gigabit = 128 Megabytes
+        assert_eq!(cap_gb_bits.as_megabytes(), 128);
+        assert_eq!(cap_gb_bits.as_bytes(), 128 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_capacity_display() {
+        assert_eq!(format!("{}", Capacity::bytes(512)), "0 KB"); // integer division
+        assert_eq!(format!("{}", Capacity::bytes(1024)), "1 KB");
+        assert_eq!(format!("{}", Capacity::megabytes(10)), "10 MB");
+        assert_eq!(format!("{}", Capacity::megabytes(2048)), "2 GB");
+    }
+
+    #[test]
+    fn test_address_calculations() {
+        let addr = Address::new(0x20800);
+        let page_size = 2048;
+        let block_size = 128 * 1024; // 128KB
+
+        // 0x20800 = 133120
+        // 133120 / 2048 = 65
+        assert_eq!(addr.page(page_size), 65);
+
+        // 133120 / 131072 = 1
+        assert_eq!(addr.block(block_size), 1);
+    }
+
+    #[test]
+    fn test_jedec_id() {
+        let id_bytes = [0xEF, 0x40, 0x18];
+        let jedec = JedecId::new(id_bytes);
+
+        assert_eq!(jedec.manufacturer, 0xEF);
+        assert_eq!(jedec.device, 0x40);
+        assert_eq!(jedec.density, 0x18);
+        assert_eq!(jedec.as_bytes(), id_bytes);
+        assert_eq!(format!("{}", jedec), "EF 40 18");
+    }
+
+    #[test]
+    fn test_progress_percentage() {
+        let p_start = Progress::new(0, 100);
+        assert_eq!(p_start.percentage(), 0.0);
+
+        let p_mid = Progress::new(50, 100);
+        assert_eq!(p_mid.percentage(), 50.0);
+
+        let p_done = Progress::new(100, 100);
+        assert_eq!(p_done.percentage(), 100.0);
+
+        // Zero total should not panic and return 0
+        let p_zero = Progress::new(0, 0);
+        assert_eq!(p_zero.percentage(), 0.0);
+    }
+
+    #[test]
+    fn test_flash_options_default() {
+        let opts = FlashOptions::default();
+        assert_eq!(opts.address, 0);
+        assert_eq!(opts.use_ecc, true);
+        assert_eq!(opts.verify, false);
+    }
+}

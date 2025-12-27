@@ -57,3 +57,42 @@ impl EccStatus {
         matches!(self, Self::Corrected { .. })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ecc_policy_helpers() {
+        let hw = EccPolicy::Hardware;
+        assert!(hw.is_enabled());
+        assert!(hw.is_hardware());
+
+        let sw = EccPolicy::Software;
+        assert!(sw.is_enabled());
+        assert!(!sw.is_hardware());
+
+        let disabled = EccPolicy::Disabled;
+        assert!(!disabled.is_enabled());
+        assert!(!disabled.is_hardware());
+    }
+
+    #[test]
+    fn test_ecc_status_helpers() {
+        let no_error = EccStatus::NoError;
+        assert!(no_error.is_valid());
+        assert!(!no_error.had_corrections());
+
+        let corrected = EccStatus::Corrected { bit_flips: 2 };
+        assert!(corrected.is_valid());
+        assert!(corrected.had_corrections());
+
+        let uncorrectable = EccStatus::Uncorrectable;
+        assert!(!uncorrectable.is_valid());
+        assert!(!uncorrectable.had_corrections());
+
+        let not_available = EccStatus::NotAvailable;
+        assert!(not_available.is_valid()); // Considered valid as we can't tell
+        assert!(!not_available.had_corrections());
+    }
+}

@@ -20,6 +20,10 @@ impl ChipRegistry {
         Self { chips }
     }
 
+    pub fn from_specs(chips: Vec<ChipSpec>) -> Self {
+        Self { chips }
+    }
+
     pub fn find_by_id(&self, id: JedecId) -> Option<ChipSpec> {
         self.chips.iter().find(|c| c.jedec_id == id).cloned()
     }

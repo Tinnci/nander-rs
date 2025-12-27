@@ -114,3 +114,52 @@ impl FlashOperation for Box<dyn FlashOperation> {
         self.as_mut().scan_bbt(on_progress)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::Error;
+
+    // Mock struct to test default trait implementations
+    struct MockFlashOp;
+
+    impl FlashOperation for MockFlashOp {
+        fn read(
+            &mut self,
+            _request: ReadRequest,
+            _on_progress: &dyn Fn(Progress),
+        ) -> Result<Vec<u8>> {
+            Ok(vec![])
+        }
+        fn write(&mut self, _request: WriteRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            Ok(())
+        }
+        fn erase(&mut self, _request: EraseRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_default_trait_implementations() {
+        let mut op = MockFlashOp;
+
+        // Test get_status default impl
+        match op.get_status() {
+            Err(Error::NotSupported(msg)) => assert_eq!(msg, "get_status not implemented"),
+            _ => panic!("Expected NotSupported error"),
+        }
+
+        // Test set_status default impl
+        match op.set_status(&[0]) {
+            Err(Error::NotSupported(msg)) => assert_eq!(msg, "set_status not implemented"),
+            _ => panic!("Expected NotSupported error"),
+        }
+
+        // Test scan_bbt default impl
+        let dummy_progress = |_: Progress| {};
+        match op.scan_bbt(&dummy_progress) {
+            Err(Error::NotSupported(msg)) => assert_eq!(msg, "BBT scan not implemented"),
+            _ => panic!("Expected NotSupported error"),
+        }
+    }
+}

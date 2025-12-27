@@ -47,8 +47,31 @@ pub struct ChipCapabilities {
 /// Bad block management status
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockStatus {
-    Good,
     Bad,
     Reserved,
     Unknown,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::types::Capacity;
+
+    #[test]
+    fn test_chip_layout_calculations() {
+        let layout = ChipLayout {
+            page_size: 2048,
+            block_size: 128 * 1024, // 128KB
+            oob_size: Some(64),
+        };
+
+        // Pages per block: 128KB / 2KB = 64
+        assert_eq!(layout.pages_per_block(), 64);
+
+        // Total pages for 128MB capacity
+        // 128MB = 134,217,728 bytes
+        // 134217728 / 2048 = 65536 pages
+        let capacity = Capacity::megabytes(128);
+        assert_eq!(layout.total_pages(capacity), 65536);
+    }
 }

@@ -51,3 +51,72 @@ impl<F: FlashOperation> ReadFlashUseCase<F> {
         self.flash.read(request, &on_progress)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{EraseRequest, FlashOperation, Progress, WriteRequest};
+    use crate::error::Result;
+    use std::cell::RefCell;
+
+    struct MockFlashSpy {
+        pub last_read_request: RefCell<Option<ReadRequest>>,
+    }
+
+    impl MockFlashSpy {
+        fn new() -> Self {
+            Self {
+                last_read_request: RefCell::new(None),
+            }
+        }
+    }
+
+    impl FlashOperation for MockFlashSpy {
+        fn read(
+            &mut self,
+            request: ReadRequest,
+            _on_progress: &dyn Fn(Progress),
+        ) -> Result<Vec<u8>> {
+            *self.last_read_request.borrow_mut() = Some(request);
+            Ok(vec![0xAA; 10])
+        }
+
+        fn write(&mut self, _request: WriteRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            Ok(())
+        }
+        fn erase(&mut self, _request: EraseRequest, _on_progress: &dyn Fn(Progress)) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_read_flash_use_case() {
+        let flash = MockFlashSpy::new();
+        let mut use_case = ReadFlashUseCase::new(flash);
+
+        let params = ReadParams {
+            address: 0x1000,
+            length: 2048,
+            use_ecc: true,
+            ignore_ecc_errors: false,
+            oob_mode: OobMode::Included,
+            bad_block_strategy: BadBlockStrategy::Skip,
+            bbt: None,
+            retry_count: 3,
+        };
+
+        let result = use_case.execute(params, |_| {});
+        assert!(result.is_ok());
+
+        assert!(use_case.flash.last_read_request.borrow().is_some());
+        let req = use_case.flash.last_read_request.borrow();
+        let req = req.as_ref().unwrap();
+
+        assert_eq!(req.address.as_u32(), 0x1000);
+        assert_eq!(req.length, 2048);
+        assert_eq!(req.use_ecc, true);
+        assert_eq!(req.oob_mode, OobMode::Included);
+        assert_eq!(req.bad_block_strategy, BadBlockStrategy::Skip);
+        assert_eq!(req.retry_count, 3);
+    }
+}
