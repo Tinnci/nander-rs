@@ -71,7 +71,7 @@ pub enum Command {
         include_bad: bool,
 
         /// Read OOB data alongside main page (NAND only)
-        #[arg(short = 'o', long = "oob")]
+        #[arg(long = "oob")]
         oob: bool,
 
         /// Read ONLY OOB data (NAND only)
@@ -323,12 +323,28 @@ mod tests {
 
     #[test]
     fn test_parse_args_with_driver_and_speed() {
-        let args = Args::parse_from(&["nander", "-D", "ch347", "-s", "2", "read", "-o", "out.bin"]);
+        let args = Args::parse_from(&[
+            "nander", "-D", "ch347", "--speed", "2", "read", "-o", "out.bin",
+        ]);
         assert_eq!(args.driver, "ch347");
         assert_eq!(args.spi_speed, 2);
         match args.command {
             Command::Read { output, .. } => assert_eq!(output, PathBuf::from("out.bin")),
             _ => panic!("Expected Read command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_args_with_passthrough() {
+        let args =
+            Args::parse_from(&["nander", "pass", "--mode", "spi", "--tx", "9F", "--rx", "3"]);
+        match args.command {
+            Command::Passthrough { mode, tx, rx, .. } => {
+                assert_eq!(mode, "spi");
+                assert_eq!(tx, Some("9F".to_string()));
+                assert_eq!(rx, 3);
+            }
+            _ => panic!("Expected Passthrough command"),
         }
     }
 }
