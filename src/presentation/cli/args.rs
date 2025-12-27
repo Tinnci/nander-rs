@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_parse_args_defaults() {
-        let args = Args::parse_from(&["nander", "info"]);
+        let args = Args::parse_from(["nander", "info"]);
         assert_eq!(args.driver, "auto");
         assert_eq!(args.spi_speed, 5);
         match args.command {
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_parse_args_with_driver_and_speed() {
-        let args = Args::parse_from(&[
+        let args = Args::parse_from([
             "nander", "-D", "ch347", "--speed", "2", "read", "-o", "out.bin",
         ]);
         assert_eq!(args.driver, "ch347");
@@ -336,8 +336,7 @@ mod tests {
 
     #[test]
     fn test_parse_args_with_passthrough() {
-        let args =
-            Args::parse_from(&["nander", "pass", "--mode", "spi", "--tx", "9F", "--rx", "3"]);
+        let args = Args::parse_from(["nander", "pass", "--mode", "spi", "--tx", "9F", "--rx", "3"]);
         match args.command {
             Command::Passthrough { mode, tx, rx, .. } => {
                 assert_eq!(mode, "spi");
