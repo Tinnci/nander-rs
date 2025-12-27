@@ -48,9 +48,9 @@ nander gui
 
 | English | 中文 |
 |---------|------|
-| [Quick Start](https://github.com/Tinnci/nander-rs/wiki/en/Quick-Start) | [快速入门](https://github.com/Tinnci/nander-rs/wiki/zh/Quick-Start) |
-| [CLI Reference](https://github.com/Tinnci/nander-rs/wiki/en/CLI-Reference) | [命令行参考](https://github.com/Tinnci/nander-rs/wiki/zh/CLI-Reference) |
-| [Troubleshooting](https://github.com/Tinnci/nander-rs/wiki/en/Troubleshooting) | [故障排除](https://github.com/Tinnci/nander-rs/wiki/zh/Troubleshooting) |
+| [Quick Start](https://github.com/Tinnci/nander-rs/wiki/En-Quick-Start) | [快速入门](https://github.com/Tinnci/nander-rs/wiki/Zh-Quick-Start) |
+| [CLI Reference](https://github.com/Tinnci/nander-rs/wiki/En-CLI-Reference) | [命令行参考](https://github.com/Tinnci/nander-rs/wiki/Zh-CLI-Reference) |
+| [Troubleshooting](https://github.com/Tinnci/nander-rs/wiki/En-Troubleshooting) | [故障排除](https://github.com/Tinnci/nander-rs/wiki/Zh-Troubleshooting) |
 
 👉 **[Full Documentation / 完整文档](https://github.com/Tinnci/nander-rs/wiki)**
 
@@ -70,7 +70,7 @@ nander gui
 
 If you see a driver error, you need to install WinUSB driver using [Zadig](https://zadig.akeo.ie/). 
 
-See: [Windows Driver Fix](https://github.com/Tinnci/nander-rs/wiki/en/Troubleshooting#windows-driver-issues)
+See: [Windows Driver Fix](https://github.com/Tinnci/nander-rs/wiki/En-Troubleshooting#windows-driver-issues)
 
 ## 📄 License
 
