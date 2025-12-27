@@ -16,7 +16,7 @@ on:
       dry_run:
         description: 'Dry run (do not actually publish)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
