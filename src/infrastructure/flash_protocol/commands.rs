@@ -220,6 +220,31 @@ pub const STATUS_EEPROM_BP1: u8 = 0x08;
 pub const I2C_ADDR_24CXX: u8 = 0xA0;
 
 // ============================================================================
+// Microwire EEPROM Opcodes (93Cxx series)
+// ============================================================================
+
+/// Microwire READ opcode (3-bit: 110b)
+pub const MW_OP_READ: u8 = 0b110;
+
+/// Microwire WRITE opcode (3-bit: 101b)
+pub const MW_OP_WRITE: u8 = 0b101;
+
+/// Microwire ERASE opcode (3-bit: 111b)
+pub const MW_OP_ERASE: u8 = 0b111;
+
+/// Microwire EWEN (Erase/Write Enable) opcode (3-bit: 100b, addr: 11xxxx)
+pub const MW_OP_EWEN: u8 = 0b100;
+
+/// Microwire EWDS (Erase/Write Disable) opcode (3-bit: 100b, addr: 00xxxx)
+pub const MW_OP_EWDS: u8 = 0b100;
+
+/// Microwire ERAL (Erase All) opcode (3-bit: 100b, addr: 10xxxx)
+pub const MW_OP_ERAL: u8 = 0b100;
+
+/// Microwire WRAL (Write All) opcode (3-bit: 100b, addr: 01xxxx)
+pub const MW_OP_WRAL: u8 = 0b100;
+
+// ============================================================================
 // Configuration Register Bits (NAND - address 0xB0)
 // ============================================================================
 

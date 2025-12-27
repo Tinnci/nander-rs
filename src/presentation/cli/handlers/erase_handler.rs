@@ -9,7 +9,7 @@ use crate::application::use_cases::erase_flash::{EraseFlashUseCase, EraseParams}
 use crate::domain::{BadBlockStrategy, FlashType};
 use crate::error::{Error, Result};
 use crate::infrastructure::chip_database::ChipRegistry;
-use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, SpiEeprom};
+use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, MicrowireEeprom, SpiEeprom};
 use crate::infrastructure::flash_protocol::nand::SpiNand;
 use crate::infrastructure::flash_protocol::nor::SpiNor;
 
@@ -88,9 +88,16 @@ impl EraseHandler {
                 })?
             }
             FlashType::MicrowireEeprom => {
-                return Err(Error::NotSupported(
-                    "Microwire EEPROM support is not yet implemented".to_string(),
-                ));
+                // Microwire EEPROM doesn't need explicit erase, but we fill with 0xFF
+                println!(
+                    "Note: Microwire EEPROM will be filled with 0xFF (no explicit erase needed)"
+                );
+                let protocol = MicrowireEeprom::new(programmer, spec);
+                let mut use_case = EraseFlashUseCase::new(protocol);
+                use_case.execute(params, |progress| {
+                    print!("\rProgress: {:.1}%", progress.percentage());
+                    let _ = std::io::stdout().flush();
+                })?
             }
         };
 

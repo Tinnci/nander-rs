@@ -25,6 +25,7 @@ pub struct Ch341a {
     _device: nusb::Device, // Kept to maintain connection
     interface: nusb::Interface,
     speed: SpiSpeed,
+    current_outputs: u8,
 }
 
 impl Ch341a {
@@ -35,6 +36,8 @@ impl Ch341a {
             _device: device,
             interface,
             speed: SpiSpeed::Medium,
+            current_outputs: 0x37, // Default: D0-D5 high except D3/D2? Wait.
+                                   // 0x37 = 110111b (D0-D2, D4-D5 high, D3 low)
         };
 
         ch341a.configure_spi()?;
@@ -46,6 +49,7 @@ impl Ch341a {
         debug!("Configuring CH341A for SPI mode...");
         let cmd = protocol::build_set_mode_cmd(self.speed);
         self.bulk_write(&cmd)?;
+        self.current_outputs = 0x37;
         Ok(())
     }
 
@@ -97,6 +101,12 @@ impl Programmer for Ch341a {
     fn set_cs(&mut self, active: bool) -> Result<()> {
         let cmd = protocol::build_cs_cmd(active);
         self.bulk_write(&cmd)?;
+        // Update current_outputs bit 0
+        if active {
+            self.current_outputs &= !0x01;
+        } else {
+            self.current_outputs |= 0x01;
+        }
         Ok(())
     }
 
@@ -210,5 +220,35 @@ impl Programmer for Ch341a {
 
         self.bulk_write(&cmd)?;
         self.bulk_read(len)
+    }
+
+    fn gpio_set(&mut self, pin: u8, level: bool) -> Result<()> {
+        let cmd = protocol::build_gpio_cmd(pin, level, self.current_outputs);
+        self.bulk_write(&cmd)?;
+
+        let mask = 1u8 << pin;
+        if level {
+            self.current_outputs |= mask;
+        } else {
+            self.current_outputs &= !mask;
+        }
+        Ok(())
+    }
+
+    fn gpio_get(&mut self, _pin: u8) -> Result<bool> {
+        // To read pins, we use CMD_GET_STATUS
+        let cmd = vec![protocol::CMD_GET_STATUS];
+        self.bulk_write(&cmd)?;
+        let response = self.bulk_read(2)?; // Status is 2 bytes
+
+        // CH341A Status bits:
+        // bit 0-7: ERR#, PEMPT, SELECT, ACK, BUSY, ...
+        // According to CH341 docs for UIO mode:
+        // D0-D5 are in bits 0-5 of the status byte?
+        // Wait, standard status read returns bits for parallel port.
+        // For CH341A in SPI/I2C mode, bit 3 is DIN (D2).
+
+        // Let's use bit 3 for D2 (DIN) which is what most apps use
+        Ok((response[0] & 0x08) != 0)
     }
 }

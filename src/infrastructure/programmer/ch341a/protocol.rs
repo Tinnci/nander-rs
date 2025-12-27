@@ -21,6 +21,9 @@ pub const CMD_UIO_STREAM: u8 = 0xAB;
 /// I2C/SPI command stream end
 pub const CMD_I2C_STM_END: u8 = 0x00;
 
+/// Get Status / Input bits
+pub const CMD_GET_STATUS: u8 = 0xA1;
+
 /// I2C subcommands for CMD_I2C_STREAM
 pub mod i2c_sub {
     /// Start bit
@@ -113,14 +116,14 @@ impl SpiSpeed {
 
 /// CH341A output pin assignments (directly from CH341A pinout)
 pub mod pins {
-    /// D0 - SPI CS (directly controlled)
+    /// D0 - SPI CS / Microwire CS (Output)
     pub const CS: u8 = 0;
-    /// D1 - SPI CLK (directly controlled)
+    /// D1 - SPI CLK / Microwire SK (Output)
     pub const CLK: u8 = 1;
-    /// D2 - SPI MISO (directly controlled)
-    pub const MISO: u8 = 2;
-    /// D3 - SPI MOSI (directly controlled)
-    pub const MOSI: u8 = 3;
+    /// D2 - SPI DIN（MISO）/ Microwire DO (Input)
+    pub const DIN: u8 = 2;
+    /// D3 - SPI DOUT (MOSI) / Microwire DI (Output)
+    pub const DOUT: u8 = 3;
     /// D4 - General purpose output (can control WP)
     pub const D4: u8 = 4;
     /// D5 - General purpose output (can control HOLD)
@@ -135,17 +138,23 @@ pub mod pins {
 pub fn build_set_mode_cmd(speed: SpiSpeed) -> Vec<u8> {
     vec![
         CMD_UIO_STREAM,
-        CMD_UIO_STM_OUT | 0x37, // Set all output pins high initially
-        CMD_UIO_STM_DIR | 0x3F, // Set direction (0-5 as outputs)
+        CMD_UIO_STM_OUT | 0x37, // Set all output pins high initially (CS high)
+        CMD_UIO_STM_DIR | 0x3B, // Dir: D0, D1, D3, D4, D5 as Out (111011b = 0x3B)
         CMD_UIO_STM_US | (speed as u8),
         CMD_UIO_STM_END,
     ]
 }
 
-/// Build command to set chip select state
-///
-/// # Arguments
-/// * `active` - true = CS low (active), false = CS high (inactive)
+/// Build command to set all outputs
+pub fn build_uio_out_cmd(outputs: u8) -> Vec<u8> {
+    vec![
+        CMD_UIO_STREAM,
+        CMD_UIO_STM_OUT | (outputs & 0x3F),
+        CMD_UIO_STM_END,
+    ]
+}
+
+/// Build command to set CS state
 pub fn build_cs_cmd(active: bool) -> Vec<u8> {
     let output_byte = if active {
         0x36 // CS low (bit 0 = 0), others high
@@ -161,8 +170,6 @@ pub fn build_cs_cmd(active: bool) -> Vec<u8> {
 }
 
 /// Build SPI transfer command
-///
-/// This wraps the data in a SPI stream packet for the CH341A.
 pub fn build_spi_transfer_cmd(data: &[u8]) -> Vec<u8> {
     let mut cmd = Vec::with_capacity(data.len() + 1);
     cmd.push(CMD_SPI_STREAM);
@@ -171,22 +178,17 @@ pub fn build_spi_transfer_cmd(data: &[u8]) -> Vec<u8> {
 }
 
 /// Build GPIO control command
-///
-/// # Arguments
-/// * `pin` - Pin number (4 or 5 for D4/D5)
-/// * `level` - true = high, false = low
-pub fn build_gpio_cmd(pin: u8, level: bool) -> Vec<u8> {
-    // Pins D4 and D5 are controllable as GPIO
+pub fn build_gpio_cmd(pin: u8, level: bool, current_outputs: u8) -> Vec<u8> {
     let mask = 1u8 << pin;
-    let output_byte = if level {
-        0x37 | mask // Set the pin high
+    let new_outputs = if level {
+        current_outputs | mask
     } else {
-        0x37 & !mask // Set the pin low
+        current_outputs & !mask
     };
 
     vec![
         CMD_UIO_STREAM,
-        CMD_UIO_STM_OUT | output_byte,
+        CMD_UIO_STM_OUT | (new_outputs & 0x3F),
         CMD_UIO_STM_END,
     ]
 }
@@ -195,11 +197,9 @@ pub fn build_gpio_cmd(pin: u8, level: bool) -> Vec<u8> {
 pub const MAX_SPI_TRANSFER_SIZE: usize = 32;
 
 /// Maximum USB bulk transfer size (CH341A hardware limit)
-/// The CH341A can handle larger USB packets, we use 4KB for optimal throughput
 pub const MAX_USB_BULK_SIZE: usize = 4096;
 
 /// Maximum SPI stream size per USB transaction
-/// Account for command byte overhead
 pub const MAX_SPI_STREAM_SIZE: usize = MAX_USB_BULK_SIZE - 1;
 
 // ============================================================================
@@ -217,10 +217,7 @@ pub fn chunk_transfer_bulk(data: &[u8]) -> impl Iterator<Item = &[u8]> {
 }
 
 /// Build a bulk SPI stream command for larger transfers
-///
-/// This allows reading more data in a single USB transaction
 pub fn build_spi_stream_cmd(len: usize) -> Vec<u8> {
-    // For reading, we send 0xFF bytes which the flash ignores
     let mut cmd = Vec::with_capacity(len + 1);
     cmd.push(CMD_SPI_STREAM);
     cmd.resize(len + 1, 0xFF);

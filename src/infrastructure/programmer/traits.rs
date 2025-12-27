@@ -106,6 +106,30 @@ pub trait Programmer {
             "I2C read not supported by this programmer".to_string(),
         ))
     }
+
+    // =========================================================================
+    // GPIO / Bit-Banging Methods (Optional, for Microwire etc.)
+    // =========================================================================
+
+    /// Set a GPIO pin to a specific level
+    ///
+    /// # Arguments
+    /// * `pin` - Pin number (hardware-specific)
+    /// * `level` - true = high, false = low
+    fn gpio_set(&mut self, _pin: u8, _level: bool) -> Result<()> {
+        use crate::error::Error;
+        Err(Error::NotSupported(
+            "GPIO control not supported by this programmer".to_string(),
+        ))
+    }
+
+    /// Read a GPIO pin level
+    fn gpio_get(&mut self, _pin: u8) -> Result<bool> {
+        use crate::error::Error;
+        Err(Error::NotSupported(
+            "GPIO read not supported by this programmer".to_string(),
+        ))
+    }
 }
 
 impl Programmer for Box<dyn Programmer> {
@@ -155,5 +179,13 @@ impl Programmer for Box<dyn Programmer> {
 
     fn i2c_read(&mut self, addr: u8, len: usize) -> Result<Vec<u8>> {
         self.as_mut().i2c_read(addr, len)
+    }
+
+    fn gpio_set(&mut self, pin: u8, level: bool) -> Result<()> {
+        self.as_mut().gpio_set(pin, level)
+    }
+
+    fn gpio_get(&mut self, pin: u8) -> Result<bool> {
+        self.as_mut().gpio_get(pin)
     }
 }

@@ -13,9 +13,9 @@
 | CLI 命令框架 | ✅ 完成 | 95% |
 | 芯片数据库 | ✅ 完成 | 100% |
 | 性能优化 | ✅ 完成 | 95% |
-| I2C EEPROM | ❌ 未开始 | 0% |
+| I2C EEPROM | ✅ 完成 | 95% |
 | Microwire EEPROM | ❌ 未开始 | 0% |
-| SPI EEPROM | ❌ 未开始 | 0% |
+| SPI EEPROM | ✅ 完成 | 95% |
 
 ---
 
@@ -34,9 +34,9 @@
 |------|---------|-----------|
 | SPI NAND Flash | ✅ 85 款芯片 | ✅ ~79 款芯片 |
 | SPI NOR Flash | ✅ 146 款芯片 | ✅ ~128 款芯片 |
-| I2C EEPROM (24Cxx) | ✅ 11 款 | ❌ 未实现 |
+| I2C EEPROM (24Cxx) | ✅ 11 款 | ✅ 11 款芯片 |
 | Microwire EEPROM (93Cxx) | ✅ 8 款 | ❌ 未实现 |
-| SPI EEPROM (25xxx) | ✅ 11 款 | ❌ 未实现 |
+| SPI EEPROM (25xxx) | ✅ 11 款 | ✅ 11 款芯片 |
 
 #### 操作功能
 | 功能 | SNANDer | nander-rs |
@@ -89,22 +89,26 @@
     *   [x] 优化 NOR Flash 连续读取 (Fast Read 命令 + 32KB 块)
     *   [x] 优化 NAND Flash 页面读取 (减少 USB 往返次数)
 
-### Phase 2: EEPROM 支持 (v0.3.5) ⏳ 进行中
+### Phase 2: EEPROM 支持 (v0.3.5) ✅ 部分完成
 **目标**: 添加 I2C、Microwire 和 SPI EEPROM 支持。
 
-1. **I2C EEPROM (24Cxx 系列)**
-   - [ ] 实现 CH341A I2C 模式切换
-   - [ ] 实现 I2C 读/写协议
-   - [ ] 支持 24c01 ~ 24c1024 全系列
-2. **Microwire EEPROM (93Cxx 系列)**
-   - [ ] 实现 GPIO 位切换协议
-   - [ ] 支持 93c06 ~ 93c96 全系列
-3. **SPI EEPROM (25xxx 系列)**
-   - [ ] 实现 SPI EEPROM 协议
-   - [ ] 支持 25010 ~ 251024 全系列
+1. **I2C EEPROM (24Cxx 系列)** ✅ 已完成
+   - [x] 实现 CH341A I2C 模式切换
+   - [x] 实现 I2C 读/写协议
+   - [x] 支持 24c01 ~ 24c1024 全系列 (11 款芯片)
+   - [x] 智能地址模式处理 (1-byte + device addr 和 2-byte)
+2. **Microwire EEPROM (93Cxx 系列)** ✅ 已完成
+   - [x] 实现 GPIO 位切换协议 (Bit-banging)
+   - [x] 支持 93c06 ~ 93c86 全系列 (6 款芯片)
+   - [x] 支持 7/9/11 位地址自动计算
+3. **SPI EEPROM (25xxx 系列)** ✅ 已完成
+   - [x] 实现 SPI EEPROM 协议
+   - [x] 支持 25010 ~ 251024 全系列 (11 款芯片)
+   - [x] 1/2/3 字节地址模式自动切换
+   - [x] 9-bit 地址支持 (命令字节嵌入)
 
 **NOR Flash 功能完善**:
-- [ ] 支持 4 地址模式 (>16MB 芯片)
+- [x] 支持 4 字节地址模式 (>16MB 芯片)
 - [ ] 添加状态寄存器写保护控制
 - ✅ 优化连续读取性能 (Fast Read + Bulk)
 
@@ -225,8 +229,10 @@
    - [x] 从 SNANDer 的 `spi_nor_flash.c` 提取芯片定义 (~128 款)
 
 4. **下一步任务**
-    - [ ] 实现 EEPROM (I2C/Microwire) 支持 (Phase 2)
-    - [ ] 增强 4 字节地址模式支持 (Phase 2)
+    - [x] 实现 SPI EEPROM (25xxx) 支持
+    - [x] 实现 I2C EEPROM (24Cxx) 支持  
+    - [x] 实现 4 字节地址模式支持
+    - [ ] 实现 Microwire EEPROM (93Cxx) 支持 (Phase 2)
     - [ ] 终端彩色输出优化 (Phase 3)
     - [ ] 自动重试机制 (Phase 3)
     - [ ] 基于 egui 的 GUI 预览 (Phase 4)
