@@ -36,14 +36,11 @@ Write-Host "🚀 Preparing release for version: $Version" -ForegroundColor Cyan
 # 2. Update Cargo.toml
 $cargoTomlPath = Join-Path $PSScriptRoot "Cargo.toml"
 $content = Get-Content $cargoTomlPath -Raw
-$newContent = $content -replace '^version = ".*"', "version = ""$Version"""
+# Using a regex that captures the whole line to ensure clean replacement
+$newContent = $content -replace '(?m)^version = ".*"$', "version = ""$Version"""
 
-if ($content -eq $newContent) {
-    Write-Warning "Cargo.toml already has version $Version. Skipping file update."
-} else {
-    Set-Content -Path $cargoTomlPath -Value $newContent -Encoding UTF8
-    Write-Host "✅ Updated Cargo.toml" -ForegroundColor Green
-}
+Set-Content -Path $cargoTomlPath -Value $newContent -Encoding UTF8
+Write-Host "✅ Updated Cargo.toml to version $Version" -ForegroundColor Green
 
 # 3. Update Cargo.lock
 Write-Host "🛠️  Updating Cargo.lock..." -ForegroundColor Yellow
