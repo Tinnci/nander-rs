@@ -3,6 +3,7 @@
 //! This module handles programmer discovery and abstraction.
 
 pub mod ch341a;
+pub mod simulator;
 pub mod traits;
 
 #[cfg(test)]

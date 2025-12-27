@@ -38,13 +38,16 @@
 **Mock Programmer Tests** (`src/infrastructure/programmer/mock.rs`): 3 tests
 **EEPROM Tests** (`src/infrastructure/flash_protocol/eeprom/spi_25xxx.rs`): 2 tests
 
+#### Integration Tests
+- `e2e_nand.rs`: End-to-end simulation of NAND Erase/Write/Read lifecycle
+
 ### Key Modules Needing Additional Tests
 
 #### Application Layer
 - `services/` - Pending implementation
 
 #### Missing Integration Tests
-- End-to-end flash operations
+- Real hardware tests (requires physical device)
 - Hardware integration tests
 - Error handling scenarios
 - Performance benchmarks

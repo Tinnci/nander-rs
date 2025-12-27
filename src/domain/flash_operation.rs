@@ -115,6 +115,32 @@ impl FlashOperation for Box<dyn FlashOperation> {
     }
 }
 
+impl<T: FlashOperation + ?Sized> FlashOperation for &mut T {
+    fn read(&mut self, request: ReadRequest, on_progress: &dyn Fn(Progress)) -> Result<Vec<u8>> {
+        (**self).read(request, on_progress)
+    }
+
+    fn write(&mut self, request: WriteRequest, on_progress: &dyn Fn(Progress)) -> Result<()> {
+        (**self).write(request, on_progress)
+    }
+
+    fn erase(&mut self, request: EraseRequest, on_progress: &dyn Fn(Progress)) -> Result<()> {
+        (**self).erase(request, on_progress)
+    }
+
+    fn get_status(&mut self) -> Result<Vec<u8>> {
+        (**self).get_status()
+    }
+
+    fn set_status(&mut self, status: &[u8]) -> Result<()> {
+        (**self).set_status(status)
+    }
+
+    fn scan_bbt(&mut self, on_progress: &dyn Fn(Progress)) -> Result<BadBlockTable> {
+        (**self).scan_bbt(on_progress)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
