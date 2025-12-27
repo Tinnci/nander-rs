@@ -81,6 +81,6 @@ pub enum Error {
     NotSupported(String),
 
     /// Miscellaneous error
-    #[error("Error: {0}")]
+    #[error("{0}")]
     Other(String),
 }

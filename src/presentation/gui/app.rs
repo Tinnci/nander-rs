@@ -105,7 +105,7 @@ impl NanderApp {
                 }
                 WorkerMessage::ConnectionFailed(err) => {
                     self.log(&format!("Connection failed: {}", err));
-                    self.status_text = format!("Error: {}", err);
+                    self.status_text = "Connection Failed (see logs)".to_string();
                     self.is_busy = false;
                     self.logs_open = true; // Open logs on error
                 }
@@ -120,8 +120,9 @@ impl NanderApp {
                 }
                 WorkerMessage::ChipDetectionFailed(err) => {
                     self.log(&format!("Chip detection failed: {}", err));
-                    self.status_text = "No chip detected".to_string();
+                    self.status_text = "Chip Detection Failed (see logs)".to_string();
                     self.is_busy = false;
+                    self.logs_open = true;
                 }
                 WorkerMessage::Progress(p) => {
                     if p.total > 0 {
@@ -149,7 +150,7 @@ impl NanderApp {
                     self.log(&format!("Operation failed: {}", err));
                     self.progress = None;
                     self.is_busy = false;
-                    self.status_text = "Failed".to_string();
+                    self.status_text = "Operation Failed (see logs)".to_string();
                     self.logs_open = true; // Open logs on error
                 }
                 WorkerMessage::Log(msg) => {

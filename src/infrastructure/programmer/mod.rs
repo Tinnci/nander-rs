@@ -162,13 +162,13 @@ fn find_supported_device() -> Result<(nusb::DeviceInfo, u16)> {
                     .count();
 
                 if wch_count > 0 {
-                    "WCH device(s) found, but none in supported mode.\\n\\\
+                    "WCH device(s) found, but none in supported mode.\n\
                     Check the debug log above for device details and troubleshooting steps."
                         .to_string()
                 } else {
                     format!(
-                        "No WCH programmer detected.\\n\\\
-                        Found {} other USB device(s), but none are supported programmers.\\n\\\
+                        "No WCH programmer detected.\n\
+                        Found {} other USB device(s), but none are supported programmers.\n\
                         Please connect a CH341A (1A86:5512) or CH347 (1A86:55DB) device.",
                         all_devices.len()
                     )
