@@ -12,6 +12,7 @@ pub const CMD_SPI_CONTROL: u8 = 0xC1; // CS control
 pub const CMD_SPI_RD_WR: u8 = 0xC2; // Standard read/write
 pub const CMD_SPI_BLCK_RD: u8 = 0xC3; // Block read
 pub const CMD_SPI_BLCK_WR: u8 = 0xC4; // Block write
+pub const CMD_JTAG_INIT: u8 = 0xD0; // JTAG INIT (Also used for Larger Pack handshake)
 
 // ============================================================================
 // CH347 SPI Speed Settings
@@ -147,3 +148,23 @@ pub fn build_spi_transfer_cmd(tx: &[u8]) -> Vec<u8> {
     packet.extend_from_slice(tx);
     packet
 }
+
+/// Build handshake command to check/enable Larger Pack mode
+pub fn build_handshake_cmd() -> Vec<u8> {
+    // [CMD, LenLow, LenHigh, ClockIndex, 0, 0, 0, 0, 0]
+    // Clock Index 9 enables Larger Pack mode
+    vec![
+        CMD_JTAG_INIT,
+        0x06,
+        0x00,
+        0x09,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+    ]
+}
+
+pub const MAX_PACKET_SIZE_STANDARD: usize = 510;
+pub const MAX_PACKET_SIZE_LARGER: usize = 51184;

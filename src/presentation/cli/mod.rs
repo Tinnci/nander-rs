@@ -263,3 +263,34 @@ pub fn execute(args: Args) -> Result<()> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::bad_block::BadBlockStrategy;
+    use crate::domain::OobMode;
+
+    #[test]
+    fn test_get_bad_block_strategy() {
+        assert_eq!(get_bad_block_strategy(false, false), BadBlockStrategy::Fail);
+        assert_eq!(get_bad_block_strategy(true, false), BadBlockStrategy::Skip);
+        assert_eq!(
+            get_bad_block_strategy(false, true),
+            BadBlockStrategy::Include
+        );
+        // include takes precedence
+        assert_eq!(
+            get_bad_block_strategy(true, true),
+            BadBlockStrategy::Include
+        );
+    }
+
+    #[test]
+    fn test_get_oob_mode() {
+        assert_eq!(get_oob_mode(false, false), OobMode::None);
+        assert_eq!(get_oob_mode(true, false), OobMode::Included);
+        assert_eq!(get_oob_mode(false, true), OobMode::Only);
+        // oob_only takes precedence
+        assert_eq!(get_oob_mode(true, true), OobMode::Only);
+    }
+}

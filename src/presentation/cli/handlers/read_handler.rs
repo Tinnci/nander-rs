@@ -113,3 +113,16 @@ impl ReadHandler {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::FlashOptions;
+
+    #[test]
+    fn test_read_handler_creation() {
+        let handler = ReadHandler::default();
+        // Just verify it compiles and instantiates
+        assert!(std::any::type_name::<ReadHandler>().contains("ReadHandler"));
+    }
+}

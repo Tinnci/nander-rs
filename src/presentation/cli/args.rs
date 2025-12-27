@@ -284,3 +284,31 @@ pub enum BbtCommand {
         input: PathBuf,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn test_parse_args_defaults() {
+        let args = Args::parse_from(&["nander", "info"]);
+        assert_eq!(args.driver, "auto");
+        assert_eq!(args.spi_speed, 5);
+        match args.command {
+            Command::Info => (),
+            _ => panic!("Expected Info command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_args_with_driver_and_speed() {
+        let args = Args::parse_from(&["nander", "-D", "ch347", "-s", "2", "read", "-o", "out.bin"]);
+        assert_eq!(args.driver, "ch347");
+        assert_eq!(args.spi_speed, 2);
+        match args.command {
+            Command::Read { output, .. } => assert_eq!(output, PathBuf::from("out.bin")),
+            _ => panic!("Expected Read command"),
+        }
+    }
+}

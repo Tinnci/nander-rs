@@ -60,6 +60,12 @@ pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
                 Ok(p)
             }
         }
+        "sim" | "simulator" => {
+            debug!("Initializing simulated programmer");
+            // Default 128MB NAND
+            let p = simulator::SimulatedProgrammer::new(128 * 1024 * 1024, 2048, 128 * 1024);
+            Ok(Box::new(p))
+        }
         _ => Err(Error::ProgrammerNotFound),
     }
 }
