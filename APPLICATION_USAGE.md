@@ -54,6 +54,10 @@ let params = ReadParams {
     bad_block_strategy: BadBlockStrategy::Skip // 坏块处理策略
 };
 
+// 注意：`ReadRequest` 已新增 `retry_count` 字段（用于指定读取失败时的重试次数）。
+// 目前该字段为内部字段，尚未通过 `ReadParams` 或 CLI 暴露；计划在后续版本将其作为可配置项并实现自动重试逻辑。
+
+
 // 执行读取，带进度回调
 let data = read_use_case.execute(params, |progress| {
     println!("读取进度: {:.1}%", progress.percentage());

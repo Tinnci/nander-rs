@@ -59,6 +59,24 @@ pub trait FlashOperation {
     fn write(&mut self, request: WriteRequest) -> Result<()>;
     fn erase(&mut self, request: EraseRequest) -> Result<()>;
 }
+
+ReadRequest 包含读取操作相关的字段，例如地址、长度、ECC 选项、BBT，以及用于读取失败时重试次数的 `retry_count` 字段（用于未来实现自动重试机制）。示例：
+
+```rust
+pub struct ReadRequest {
+    pub address: Address,
+    pub length: u32,
+    pub use_ecc: bool,
+    /// Ignore ECC errors and continue reading (for data recovery)
+    pub ignore_ecc_errors: bool,
+    pub oob_mode: OobMode,
+    pub bad_block_strategy: BadBlockStrategy,
+    /// Pre-scanned Bad Block Table (optional)
+    pub bbt: Option<BadBlockTable>,
+    /// Number of retries for read operations
+    pub retry_count: u32,
+}
+```
 ```
 
 ### 2. Application Layer (应用层)
