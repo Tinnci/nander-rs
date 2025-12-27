@@ -1,49 +1,59 @@
 use super::messages::{GuiMessage, WorkerMessage};
 use crate::domain::ChipSpec;
 use eframe::{egui, App, Frame};
+use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{Receiver, Sender};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Serialize, Deserialize)]
 enum Tab {
     Read,
     Write,
     Erase,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct NanderApp {
     /// Channel to send commands to the worker thread
+    #[serde(skip)]
     tx: Sender<GuiMessage>,
     /// Channel to receive updates from the worker thread
+    #[serde(skip)]
     rx: Receiver<WorkerMessage>,
 
     // UI State
     active_tab: Tab,
     spi_speed: u8,
     cs_index: u8,
+    #[serde(skip)]
     status_text: String,
+    #[serde(skip)]
     programmer_name: Option<String>,
+    #[serde(skip)]
     chip_spec: Option<ChipSpec>,
+    #[serde(skip)]
     is_busy: bool,
+    #[serde(skip)]
     progress: Option<f32>,
+    #[serde(skip)]
     logs: Vec<String>,
+    logs_open: bool,
     selected_file: Option<std::path::PathBuf>,
     start_address: String,
     length: String,
+    #[serde(skip)]
     preview_data: Vec<u8>,
 }
 
-impl NanderApp {
-    pub fn new(
-        _cc: &eframe::CreationContext<'_>,
-        tx: Sender<GuiMessage>,
-        rx: Receiver<WorkerMessage>,
-    ) -> Self {
-        // Customize fonts or look here if needed
+impl Default for NanderApp {
+    fn default() -> Self {
+        let (tx, _) = std::sync::mpsc::channel();
+        let (_, rx) = std::sync::mpsc::channel();
         Self {
             tx,
             rx,
             active_tab: Tab::Read,
-            spi_speed: 5, // Default speed
+            spi_speed: 5,
             cs_index: 0,
             status_text: "Ready".to_string(),
             programmer_name: None,
@@ -51,11 +61,36 @@ impl NanderApp {
             is_busy: false,
             progress: None,
             logs: Vec::new(),
+            logs_open: false,
             selected_file: None,
             start_address: "0x0".to_string(),
             length: "".to_string(),
             preview_data: Vec::new(),
         }
+    }
+}
+
+impl NanderApp {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        tx: Sender<GuiMessage>,
+        rx: Receiver<WorkerMessage>,
+    ) -> Self {
+        let mut app = if let Some(storage) = cc.storage {
+            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
+        } else {
+            Self::default()
+        };
+
+        app.tx = tx;
+        app.rx = rx;
+        app.status_text = "Ready".to_string();
+        app.is_busy = false;
+        app.progress = None;
+        app.logs = Vec::new();
+        app.preview_data = Vec::new();
+
+        app
     }
 
     /// Process incoming messages from the worker
@@ -72,6 +107,7 @@ impl NanderApp {
                     self.log(&format!("Connection failed: {}", err));
                     self.status_text = format!("Error: {}", err);
                     self.is_busy = false;
+                    self.logs_open = true; // Open logs on error
                 }
                 WorkerMessage::ChipDetected(spec) => {
                     self.log(&format!(
@@ -114,6 +150,7 @@ impl NanderApp {
                     self.progress = None;
                     self.is_busy = false;
                     self.status_text = "Failed".to_string();
+                    self.logs_open = true; // Open logs on error
                 }
                 WorkerMessage::Log(msg) => {
                     self.log(&msg);
@@ -311,9 +348,7 @@ impl App for NanderApp {
         // 3. Bottom Panel (Status & Logs)
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Status:");
-                ui.label(&self.status_text);
-
+                ui.strong("Status:");
                 if let Some(prog) = self.progress {
                     ui.add(
                         egui::ProgressBar::new(prog)
@@ -322,10 +357,12 @@ impl App for NanderApp {
                     );
                 }
             });
+            ui.label(&self.status_text);
 
             ui.separator();
 
-            ui.collapsing("Logs", |ui| {
+            let collapsing = egui::CollapsingHeader::new("Logs").open(Some(self.logs_open));
+            let resp = collapsing.show(ui, |ui| {
                 egui::ScrollArea::vertical()
                     .stick_to_bottom(true)
                     .max_height(100.0)
@@ -335,6 +372,10 @@ impl App for NanderApp {
                         }
                     });
             });
+
+            if resp.header_response.clicked() {
+                self.logs_open = !self.logs_open;
+            }
         });
 
         // 4. Central Panel (Operations)
@@ -469,5 +510,9 @@ impl App for NanderApp {
         if self.is_busy {
             ctx.request_repaint();
         }
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
