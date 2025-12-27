@@ -94,6 +94,13 @@ impl VerifyHandler {
                     pb.set_position(progress.current);
                 })?
             }
+            FlashType::SpiFram => {
+                let protocol = SpiNor::new(programmer, spec);
+                let mut use_case = VerifyFlashUseCase::new(protocol);
+                use_case.execute(params, |progress| {
+                    pb.set_position(progress.current);
+                })?
+            }
         };
 
         pb.finish_with_message("Verification Complete");

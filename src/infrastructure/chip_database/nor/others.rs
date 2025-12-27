@@ -21,6 +21,7 @@ use crate::domain::types::*;
 pub fn get_chips() -> Vec<ChipSpec> {
     let mut chips = Vec::new();
     chips.extend(atmel_chips());
+    chips.extend(atmel_dataflash_chips());
     chips.extend(esmt_nor_chips());
     chips.extend(zbit_chips());
     chips.extend(boya_chips());
@@ -40,6 +41,34 @@ fn atmel_chips() -> Vec<ChipSpec> {
         nor_chip_with_id("Atmel", "AT25DF321", 0x1F, 0x4700, 64, 64),
         nor_chip_with_id("Atmel", "AT26DF161", 0x1F, 0x4600, 32, 64),
     ]
+}
+
+fn atmel_dataflash_chips() -> Vec<ChipSpec> {
+    vec![
+        dataflash_chip("AT45DB041", 0x2400, 2048, 264),
+        dataflash_chip("AT45DB081", 0x2500, 4096, 264),
+        dataflash_chip("AT45DB161", 0x2600, 4096, 528),
+        dataflash_chip("AT45DB321", 0x2700, 8192, 528),
+        dataflash_chip("AT45DB641", 0x2800, 8192, 1056),
+    ]
+}
+
+fn dataflash_chip(name: &str, jedec_id: u16, n_pages: u32, page_size: u32) -> ChipSpec {
+    ChipSpec {
+        name: name.to_string(),
+        manufacturer: "Atmel".to_string(),
+        jedec_id: JedecId::new([0x1F, (jedec_id >> 8) as u8, jedec_id as u8]),
+        flash_type: FlashType::Nor,
+        capacity: Capacity::bytes(n_pages * page_size),
+        layout: ChipLayout {
+            page_size,
+            block_size: page_size * 8, // DataFlash blocks are usually 8 pages
+            oob_size: None,
+            is_dataflash: true,
+        },
+        capabilities: ChipCapabilities::default(),
+        otp: None,
+    }
 }
 
 // =========================================================================
@@ -179,7 +208,14 @@ fn nor_chip_with_id(
             page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities::default(),
+        otp: Some(OtpLayout {
+            region_count: 3,
+            region_size: 256,
+            enter_opcode: 0x48,
+            exit_opcode: 0x00,
+        }),
     }
 }

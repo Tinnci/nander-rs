@@ -52,11 +52,13 @@ fn nand_chip(
             page_size,
             block_size: block_size_kb * 1024,
             oob_size: Some(oob_size),
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_ecc_control: true,
             supports_dual_spi: true,
             ..Default::default()
         },
+        otp: None,
     }
 }

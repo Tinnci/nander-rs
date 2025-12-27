@@ -51,7 +51,9 @@ fn i2c_eeprom(name: &str, capacity_bytes: u32, page_size: u32) -> ChipSpec {
             page_size,
             block_size: page_size,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities::default(),
+        otp: None,
     }
 }

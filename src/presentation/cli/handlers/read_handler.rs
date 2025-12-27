@@ -100,6 +100,14 @@ impl ReadHandler {
                     pb.set_position(progress.current);
                 })?
             }
+            FlashType::SpiFram => {
+                // FRAM uses same protocol as SPI EEPROM
+                let protocol = SpiEeprom::new(programmer, spec);
+                let mut use_case = ReadFlashUseCase::new(protocol);
+                use_case.execute(params, |progress| {
+                    pb.set_position(progress.current);
+                })?
+            }
         };
 
         pb.finish_with_message("Read Complete");

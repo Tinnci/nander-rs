@@ -15,6 +15,7 @@ pub struct ChipSpec {
     pub capacity: Capacity,
     pub layout: ChipLayout,
     pub capabilities: ChipCapabilities,
+    pub otp: Option<OtpLayout>,
 }
 
 /// Physical layout of the chip
@@ -23,6 +24,17 @@ pub struct ChipLayout {
     pub page_size: u32,
     pub block_size: u32,
     pub oob_size: Option<u32>,
+    /// Whether this is a DataFlash (AT45DB) with non-power-of-two pages
+    pub is_dataflash: bool,
+}
+
+/// OTP (One-Time Programmable) region layout
+#[derive(Debug, Clone, Copy)]
+pub struct OtpLayout {
+    pub region_count: u32,
+    pub region_size: u32,
+    pub enter_opcode: u8,
+    pub exit_opcode: u8,
 }
 
 impl ChipLayout {
@@ -63,6 +75,7 @@ mod tests {
             page_size: 2048,
             block_size: 128 * 1024, // 128KB
             oob_size: Some(64),
+            is_dataflash: false,
         };
 
         // Pages per block: 128KB / 2KB = 64

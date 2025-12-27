@@ -142,10 +142,12 @@ fn spi_eeprom(name: &str, manufacturer: &str, capacity_bytes: u32, page_size: u3
             page_size,
             block_size: page_size, // EEPROMs are byte-writable, use page as block
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_4byte_addr: capacity_bytes > 65536,
             ..Default::default()
         },
+        otp: None,
     }
 }

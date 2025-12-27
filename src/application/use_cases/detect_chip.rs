@@ -79,8 +79,10 @@ mod tests {
                 page_size: 256,
                 block_size: 4096,
                 oob_size: None,
+                is_dataflash: false,
             },
             capabilities: ChipCapabilities::default(),
+            otp: None,
         };
         let registry = ChipRegistry::from_specs(vec![known_chip.clone()]);
         let use_case = DetectChipUseCase::new(registry);

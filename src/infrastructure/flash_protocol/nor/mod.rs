@@ -68,7 +68,25 @@ impl<P: Programmer> SpiNor<P> {
     }
 
     fn addr_to_bytes(&self, addr: u32) -> Vec<u8> {
-        if self.spec.capabilities.supports_4byte_addr {
+        if self.spec.layout.is_dataflash {
+            let page_size = self.spec.layout.page_size;
+            let page_offset_bits = match page_size {
+                256 => 8,
+                264 => 9,
+                512 => 9,
+                528 => 10,
+                1024 => 10,
+                1056 => 11,
+                2048 => 11,
+                2112 => 12,
+                _ => 8, // Default to 256
+            };
+            let page = addr / page_size;
+            let offset = addr % page_size;
+            let df_addr = (page << page_offset_bits) | offset;
+
+            vec![(df_addr >> 16) as u8, (df_addr >> 8) as u8, df_addr as u8]
+        } else if self.spec.capabilities.supports_4byte_addr {
             vec![
                 (addr >> 24) as u8,
                 (addr >> 16) as u8,

@@ -206,6 +206,10 @@ impl BatchScript {
                         EraseFlashUseCase::new(MicrowireEeprom::new(programmer, chip.clone()))
                             .execute(params, on_progress)
                     }
+                    FlashType::SpiFram => {
+                        // FRAM doesn't need erase
+                        Ok(())
+                    }
                 }?;
 
                 info!("   ✓ Erase complete");
@@ -259,6 +263,10 @@ impl BatchScript {
                         WriteFlashUseCase::new(MicrowireEeprom::new(programmer, chip.clone()))
                             .execute(params, on_progress)
                     }
+                    FlashType::SpiFram => {
+                        WriteFlashUseCase::new(SpiEeprom::new(programmer, chip.clone()))
+                            .execute(params, on_progress)
+                    }
                 }?;
 
                 info!("   ✓ Write complete");
@@ -306,6 +314,10 @@ impl BatchScript {
                     }
                     FlashType::MicrowireEeprom => {
                         VerifyFlashUseCase::new(MicrowireEeprom::new(programmer, chip.clone()))
+                            .execute(params, on_progress)
+                    }
+                    FlashType::SpiFram => {
+                        VerifyFlashUseCase::new(SpiEeprom::new(programmer, chip.clone()))
                             .execute(params, on_progress)
                     }
                 }?;

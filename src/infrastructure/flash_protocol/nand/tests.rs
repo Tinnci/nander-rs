@@ -20,11 +20,13 @@ fn create_test_nand_spec() -> ChipSpec {
             page_size: 2048,
             block_size: 128 * 1024, // 128KB (64 pages per block)
             oob_size: Some(64),
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_ecc_control: true,
             ..Default::default()
         },
+        otp: None,
     }
 }
 

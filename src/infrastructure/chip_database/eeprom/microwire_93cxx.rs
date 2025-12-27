@@ -41,7 +41,9 @@ fn mw_eeprom(name: &str, capacity_bytes: u32) -> ChipSpec {
             page_size: 1, // Microwire is byte-writable
             block_size: 1,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities::default(),
+        otp: None,
     }
 }

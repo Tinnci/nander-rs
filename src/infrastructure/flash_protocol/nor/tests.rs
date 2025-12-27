@@ -23,8 +23,10 @@ fn create_test_nor_spec() -> ChipSpec {
             page_size: 256,
             block_size: 64 * 1024, // 64KB
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities::default(),
+        otp: None,
     }
 }
 

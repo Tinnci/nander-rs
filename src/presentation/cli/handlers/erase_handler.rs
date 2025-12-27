@@ -97,6 +97,11 @@ impl EraseHandler {
                     pb.set_position(progress.current);
                 })?
             }
+            FlashType::SpiFram => {
+                // FRAM doesn't need erase
+                pb.set_message("Skipping erase (FRAM)");
+                pb.finish_with_message("Done");
+            }
         };
 
         pb.finish_with_message("Erase Complete");

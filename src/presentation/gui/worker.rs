@@ -145,6 +145,13 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                                 tx_progress.send(WorkerMessage::Progress(prog)).ok();
                             })
                         }
+                        FlashType::SpiFram => {
+                            let protocol = SpiEeprom::new(p.as_mut(), spec);
+                            let mut use_case = ReadFlashUseCase::new(protocol);
+                            use_case.execute(params, |prog| {
+                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                            })
+                        }
                     };
 
                     match result {
@@ -252,6 +259,13 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                                 tx_progress.send(WorkerMessage::Progress(prog)).ok();
                             })
                         }
+                        FlashType::SpiFram => {
+                            let protocol = SpiEeprom::new(p.as_mut(), spec);
+                            let mut use_case = WriteFlashUseCase::new(protocol);
+                            use_case.execute(params, |prog| {
+                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                            })
+                        }
                     };
 
                     match result {
@@ -326,6 +340,10 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                             use_case.execute(params, |prog| {
                                 tx_progress.send(WorkerMessage::Progress(prog)).ok();
                             })
+                        }
+                        FlashType::SpiFram => {
+                            // FRAM doesn't need erase
+                            Ok(())
                         }
                     };
 

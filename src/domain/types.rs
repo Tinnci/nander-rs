@@ -78,6 +78,8 @@ pub enum FlashType {
     I2cEeprom,
     /// Microwire EEPROM (93Cxx series)
     MicrowireEeprom,
+    /// SPI FRAM (Ferroelectric RAM)
+    SpiFram,
 }
 
 /// Common options for Flash operations
@@ -133,6 +135,7 @@ impl fmt::Display for FlashType {
             FlashType::SpiEeprom => write!(f, "SPI EEPROM"),
             FlashType::I2cEeprom => write!(f, "I2C EEPROM"),
             FlashType::MicrowireEeprom => write!(f, "Microwire EEPROM"),
+            FlashType::SpiFram => write!(f, "SPI FRAM"),
         }
     }
 }

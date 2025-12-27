@@ -47,11 +47,13 @@ fn nor_chip(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -> C
             page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_4byte_addr: false,
             ..Default::default()
         },
+        otp: None,
     }
 }
 
@@ -69,10 +71,12 @@ fn nor_chip_4b(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -
             page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_4byte_addr: true,
             ..Default::default()
         },
+        otp: None,
     }
 }

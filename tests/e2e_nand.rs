@@ -28,8 +28,10 @@ fn test_e2e_nand_lifecycle() {
             page_size,
             block_size,
             oob_size: Some(64),
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities::default(),
+        otp: None,
     };
 
     // 3. Create Protocol Layer

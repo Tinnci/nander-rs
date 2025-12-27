@@ -57,12 +57,19 @@ fn nor_chip(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -> C
             page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_4byte_addr: false,
             supports_quad_spi: true,
             ..Default::default()
         },
+        otp: Some(OtpLayout {
+            region_count: 3,
+            region_size: 256,
+            enter_opcode: 0x48, // Use as Read command for now
+            exit_opcode: 0x00,
+        }),
     }
 }
 
@@ -80,11 +87,18 @@ fn nor_chip_4b(name: &str, jedec_id: u16, n_sectors: u32, sector_size_kb: u32) -
             page_size: 256,
             block_size: sector_size_kb * 1024,
             oob_size: None,
+            is_dataflash: false,
         },
         capabilities: ChipCapabilities {
             supports_4byte_addr: true,
             supports_quad_spi: true,
             ..Default::default()
         },
+        otp: Some(OtpLayout {
+            region_count: 3,
+            region_size: 256,
+            enter_opcode: 0x48,
+            exit_opcode: 0x00,
+        }),
     }
 }

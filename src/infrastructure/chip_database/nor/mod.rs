@@ -16,6 +16,7 @@
 //! Total: ~128 NOR chips
 
 pub mod eon;
+pub mod fram;
 pub mod gigadevice;
 pub mod macronix;
 pub mod micron;
@@ -39,6 +40,7 @@ pub fn get_all_nor() -> Vec<ChipSpec> {
 
     // Other smaller manufacturers
     chips.extend(others::get_chips());
+    chips.extend(fram::get_chips());
 
     chips
 }
