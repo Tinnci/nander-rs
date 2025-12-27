@@ -138,5 +138,11 @@ pub fn execute(args: Args) -> Result<()> {
             let handler = ProtectHandler::new();
             handler.handle_status(value, Some(args.spi_speed))
         }
+        Command::Bbt { command } => {
+            let handler = BbtHandler::new();
+            match command {
+                args::BbtCommand::Scan => handler.handle_scan(Some(args.spi_speed)),
+            }
+        }
     }
 }

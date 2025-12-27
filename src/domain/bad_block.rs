@@ -50,3 +50,59 @@ impl BadBlockStrategy {
         matches!(self, Self::Include)
     }
 }
+
+/// Status of a flash block
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BlockStatus {
+    /// Status unknown (not scanned)
+    #[default]
+    Unknown,
+    /// Verified Good block
+    Good,
+    /// Factory marked bad block
+    BadFactory,
+    /// Bad block detected during runtime
+    BadRuntime,
+}
+
+/// In-memory Bad Block Table
+#[derive(Debug, Clone)]
+pub struct BadBlockTable {
+    status: Vec<BlockStatus>,
+}
+
+impl BadBlockTable {
+    pub fn new(total_blocks: usize) -> Self {
+        Self {
+            status: vec![BlockStatus::Unknown; total_blocks],
+        }
+    }
+
+    pub fn set_status(&mut self, block: usize, status: BlockStatus) {
+        if block < self.status.len() {
+            self.status[block] = status;
+        }
+    }
+
+    pub fn get_status(&self, block: usize) -> BlockStatus {
+        if block < self.status.len() {
+            self.status[block]
+        } else {
+            BlockStatus::Unknown
+        }
+    }
+
+    pub fn is_bad(&self, block: usize) -> bool {
+        matches!(
+            self.get_status(block),
+            BlockStatus::BadFactory | BlockStatus::BadRuntime
+        )
+    }
+
+    pub fn bad_block_count(&self) -> usize {
+        self.status
+            .iter()
+            .filter(|&&s| s == BlockStatus::BadFactory || s == BlockStatus::BadRuntime)
+            .count()
+    }
+}

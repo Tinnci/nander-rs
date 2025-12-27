@@ -2,7 +2,7 @@
 //!
 //! Definintions of core flash operations as seen by the application.
 
-use super::bad_block::BadBlockStrategy;
+use super::bad_block::{BadBlockStrategy, BadBlockTable};
 use super::types::{Address, Progress};
 use crate::error::Result;
 
@@ -65,6 +65,16 @@ pub trait FlashOperation {
     fn set_status(&mut self, _status: &[u8]) -> Result<()> {
         Err(crate::error::Error::NotSupported(
             "set_status not implemented".to_string(),
+        ))
+    }
+
+    /// Scan for bad blocks and return a BadBlockTable
+    fn scan_bbt(&mut self, _on_progress: &dyn Fn(Progress)) -> Result<BadBlockTable> {
+        // Default implementation returns an empty table (or should error?)
+        // For devices that don't support BBT (like EEPROM/NOR), effectively no bad blocks.
+        // But better to return NotSupported for now.
+        Err(crate::error::Error::NotSupported(
+            "BBT scan not implemented".to_string(),
         ))
     }
 }

@@ -192,4 +192,16 @@ pub enum Command {
         #[arg(value_name = "VALUE")]
         value: Option<String>,
     },
+
+    /// Bad Block Table management
+    Bbt {
+        #[command(subcommand)]
+        command: BbtCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum BbtCommand {
+    /// Scan chip and list all bad blocks
+    Scan,
 }

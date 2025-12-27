@@ -7,7 +7,7 @@ mod tests;
 
 use std::time::{Duration, Instant};
 
-use crate::domain::bad_block::BadBlockStrategy;
+use crate::domain::bad_block::{BadBlockStrategy, BadBlockTable, BlockStatus};
 use crate::domain::chip::ChipSpec;
 use crate::domain::{EraseRequest, FlashOperation, OobMode, Progress, ReadRequest, WriteRequest};
 use crate::error::{Error, Result};
@@ -420,5 +420,27 @@ impl<P: Programmer> FlashOperation for SpiNand<P> {
         }
 
         Ok(())
+    }
+
+    fn scan_bbt(&mut self, on_progress: &dyn Fn(Progress)) -> Result<BadBlockTable> {
+        let block_size = self.spec.layout.block_size;
+        let total_blocks = (self.spec.capacity.as_bytes() / block_size) as usize;
+        let mut bbt = BadBlockTable::new(total_blocks);
+
+        for block in 0..total_blocks {
+            let is_bad = self.is_bad_block(block as u32)?;
+            if is_bad {
+                bbt.set_status(block, BlockStatus::BadFactory);
+            } else {
+                bbt.set_status(block, BlockStatus::Good);
+            }
+
+            if block % 10 == 0 {
+                on_progress(Progress::new(block as u64, total_blocks as u64));
+            }
+        }
+
+        on_progress(Progress::new(total_blocks as u64, total_blocks as u64));
+        Ok(bbt)
     }
 }

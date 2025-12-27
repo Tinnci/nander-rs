@@ -237,7 +237,8 @@
     - [x] 详细进度条 (速度统计, 预计剩余时间)
     - [x] 终端彩色输出优化 (Phase 3)
     - [ ] 自动重试机制 (Phase 3)
-    - [ ] 坏块表 (BBT) 扫描与更新 (Advanced)
+    - [x] 坏块表 (BBT) 扫描 (Advanced)
+    - [ ] 坏块表 (BBT) 更新与导出 (Advanced)
     - [ ] 基于 egui 的 GUI 预览 (Phase 4)
 
 ---

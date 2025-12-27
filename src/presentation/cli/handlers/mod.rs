@@ -2,6 +2,7 @@
 //!
 //! Contains individual command handlers for the CLI.
 
+pub mod bbt_handler;
 pub mod erase_handler;
 pub mod info_handler;
 pub mod list_handler;
@@ -10,6 +11,7 @@ pub mod read_handler;
 pub mod verify_handler;
 pub mod write_handler;
 
+pub use bbt_handler::BbtHandler;
 pub use erase_handler::EraseHandler;
 pub use info_handler::InfoHandler;
 pub use list_handler::ListHandler;
