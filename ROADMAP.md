@@ -1,98 +1,91 @@
-# nander-rs 项目路线图
+# nander-rs Project Roadmap
 
-## 📊 项目状态 (v0.4.0)
+## 📊 Project Status (v0.4.1)
 
-`nander-rs` 已经完成了核心功能的开发，目前处于 **v0.4.0** 版本。
-相比于原版 SNANDer，本项目在架构、性能和易用性上都有显著提升。
+`nander-rs` has completed core feature development and has now entered a stability and testing phase. The current version **v0.4.1** focuses on rigorous testing coverage and architectural robustness.
 
-| 模块 | 状态 | 完成度 | 备注 |
-|------|------|--------|------|
-| **核心架构** | ✅ 完成 | 100% | 分层架构 (Domain/App/Infra/UI) |
-| **CH341A 驱动** | ✅ 完成 | 100% | 纯 Rust `nusb` 实现，支持批量传输优化 |
-| **SPI NAND** | ✅ 完成 | 100% | 读/写/擦除/坏块管理/OOB/ECC |
-| **SPI NOR** | ✅ 完成 | 100% | 支持 Fast Read，4-byte 地址模式 |
-| **EEPROM** | ✅ 完成 | 100% | I2C (24Cxx), SPI (25xxx), Microwire (93Cxx) |
-| **CLI 交互** | ✅ 完成 | 100% | 进度条、彩色输出、详细信息 |
-| **高级功能** | ✅ 完成 | 95% | 自动重试、写保护管理、BBT 扫描 |
-
----
-
-## 📅 版本规划与里程碑
-
-### v0.5.0: 生态与发布 (下一阶段)
-**目标**: 完善文档，发布到 crates.io，清理代码，准备 1.0 版本。
-
-- [ ] **发布准备**
-    - [ ] 完善所有公共 API 文档 (`cargo doc`)
-    - [ ] 添加集成测试脚本
-    - [ ] 发布至 crates.io
-- [ ] **更多硬件支持** (探索中)
-    - [ ] 树莓派 (Linux spidev)
-    - [ ] CH347 (高速 USB-SPI/JTAG)
-- [ ] **GUI 预览**
-    - [ ] 基于 `egui` 的简单芯片查看器
-
-### v0.4.0: 高级功能完备 (✅ 已发布)
-**重点**: 提升可靠性和性能。
-
-- **性能优化**:
-    - [x] CH341A 批量 SPI 读取 (Big Data Bulk Read)
-    - [x] 优化小数据包传输 (Single USB Transaction for CS+CMD+DATA)
-    - [x] NOR Flash 使用 Fast Read (0x0B) 指令
-- **可靠性**:
-    - [x] 读取/校验自动重试机制 (`--retries`)
-    - [x] 写后自动校验功能 (`--verify`)
-- **新命令**:
-    - [x] `protect` / `status`: 状态寄存器管理与写保护控制
-    - [x] `bbt`: 坏块表扫描与导出/导入
-- **EEPROM 完整支持**:
-    - [x] I2C EEPROM (24Cxx)
-    - [x] Microwire EEPROM (93Cxx)
-    - [x] SPI EEPROM (25xxx) 包含 9-bit 地址支持
-
-### v0.3.0: 核心重构与 NAND 支持 (✅ 已完成)
-**重点**: 完成从原版 C 代码到 Rust 分层架构的迁移。
-
-- [x] **领域驱动设计 (DDD)**: 分离 Flash 协议与硬件实现。
-- [x] **NAND 完整支持**:
-    - 坏块策略: Skip/Fail/Include
-    - OOB 模式: None/OobOnly/Included
-    - 内部 ECC 控制
-- [x] **芯片数据库迁移**: 支持原版所有芯片 (~200 款)。
-
-### v0.2.0: 基础架构 (✅ 已完成)
-- [x] 项目初始化与 USB 通信打通。
-- [x] 基础 CLI 框架。
+| Module | Status | Completion | Notes |
+|--------|--------|------------|-------|
+| **Core Architecture** | ✅ Done | 100% | Layered Architecture (Domain/App/Infra/UI) |
+| **Testing Suite** | ✅ Done | 90% | Unit Tests (Domain/App), E2E Simulation |
+| **CH341A Driver** | ✅ Done | 100% | Pure Rust `nusb`, Optimized Bulk Transfer |
+| **SPI NAND** | ✅ Done | 100% | Read/Write/Erase, Bad Block Mgmt, OOB, ECC |
+| **SPI NOR** | ✅ Done | 100% | Fast Read, 4-byte Address Mode |
+| **EEPROM** | ✅ Done | 100% | I2C (24Cxx), SPI (25xxx), Microwire (93Cxx) |
+| **Advanced Features** | ✅ Done | 95% | Auto-retry, Write Verification, BBT Scans |
 
 ---
 
-## 🔍 功能对比 (v0.4.0 vs SNANDer)
+## 📅 Version Planning & Milestones
 
-| 功能 | SNANDer (C) | nander-rs (Rust) | 优势 |
-|------|-------------|------------------|------|
-| **驱动依赖** | libusb (DLL) | **nusb (Native)** | 无需安装驱动/DLL，即插即用 |
-| **传输性能** | 标准 | **极高** | 批量 USB 传输，减少 90% USB 交互 |
-| **架构** | 单文件/过程式 | **DDD 分层** | 易于扩展新的编程器/协议 |
-| **EEPROM** | 基础支持 | **完整支持** | 自动地址计算，支持 Microwire/SPI/I2C 全系列 |
-| **用户体验** | 简单文本 | **富交互** | 实时进度条、彩色日志、剩余时间预估 |
-| **错误恢复** | 无 | **自动重试** | 这对于老化芯片读取至关重要 |
+### v0.5.0: Ecosystem & 1.0 Preparation (Next Phase)
+**Goal**: Polish documentation, setup CI/CD pipeline, publish to crates.io, and prepare for v1.0 stable release.
+
+- [ ] **Release Engineering**
+    - [ ] Setup GitHub Actions (CI) for automated testing
+    - [ ] Publish crate to crates.io
+    - [ ] Create binary releases for Windows/Linux/macOS
+- [ ] **Documentation**
+    - [ ] Comprehensive API docs (`cargo doc`)
+    - [ ] User Guide with common usage examples
+- [ ] **Hardware Expansion** (Exploratory)
+    - [ ] Raspberry Pi (Linux spidev)
+    - [ ] CH347 (High-speed USB-SPI/JTAG)
+- [ ] **GUI Preview**
+    - [ ] Simple chip viewer using `egui`
+
+### v0.4.1: Testing & stability (✅ Completed)
+**Focus**: Ensuring code correctness through comprehensive unit and integration testing.
+
+- **Testing Infrastructure**:
+    - [x] **Simulated Programmer**: In-memory SPI flash simulator for safe E2E testing without hardware.
+    - [x] **Domain Layer Tests**: 100% coverage for core types (`Address`, `Capacity`, `JedecId`) and logic (`BadBlock`, `Ecc`).
+    - [x] **Application Layer Tests**: Mock-based testing for all Use Cases (`Read`, `Write`, `Erase`, `Verify`, `Detect`).
+    - [x] **E2E Integration**: Full lifecycle test (`Erase` -> `Write` -> `Read`) running against the simulator.
+
+### v0.4.0: Advanced Features (✅ Released)
+**Focus**: Reliability and Performance.
+
+- **Performance**:
+    - [x] CH341A Bulk SPI Read Optimization
+    - [x] Single USB Transaction for CS+CMD+DATA
+- **Reliability**:
+    - [x] Automatic retry mechanism (`--retries`)
+    - [x] Write verification (`--verify`)
+- **New Commands**:
+    - [x] `protect` / `status` management
+    - [x] `bbt` (Bad Block Table) management
+- **EEPROM Support**:
+    - [x] I2C, Microwire, SPI EEPROM support
 
 ---
 
-## 🛠 待办事项 (TODO)
+## 🔍 Feature Comparison (v0.4.x vs SNANDer)
 
-### 长期规划
-1. **GUI 客户端**
-   - 开发跨平台 GUI，支持拖拽烧录、芯片引脚图显示、Hex 编辑器视图。
-
-2. **支持更多编程器**
-   - 适配 Linux `spidev` (树莓派/嵌入式 Linux)。
-   - 适配 FTDI 系列 (FT232H/FT2232H)。
-   - 适配 CH347 (高速 USB 2.0 High-Speed)。
-
-3. **脚本化支持**
-   - 允许用户使用 Lua/Python 脚本定义特殊芯片的读写逻辑。
+| Feature | SNANDer (C) | nander-rs (Rust) | Advantage |
+|---------|-------------|------------------|-----------|
+| **Driver** | libusb (DLL) | **nusb (Native)** | Driverless, Plug-and-Play |
+| **Performance** | Standard | **Extreme** | Bulk USB transfers, 90% fewer interactions |
+| **Safety** | None | **High** | End-to-End Simulation, Heavy Unit Testing |
+| **Architecture** | Monolithic | **DDD Layered** | Easy to extend and maintain |
+| **UX** | Text | **Rich Interactive** | Progress bars, Colors, Time estimates |
+| **Reliability** | Manual | **Auto-Retry** | Critical for aging chips |
 
 ---
 
-*最后更新: 2025-12-27 (v0.4.0)*
+## 🛠 TODO List
+
+### Long Term
+1. **GUI Client**
+   - Cross-platform GUI for drag-and-drop programming and hex editing.
+
+2. **Broad Hardware Support**
+   - Native linux `spidev` support.
+   - FTDI (FT232H/2232H) support.
+
+3. **Scripting**
+   - Lua/Python scripting for custom chip protocols.
+
+---
+
+*Last Updated: 2025-12-27 (v0.4.1)*

@@ -1,83 +1,60 @@
 # Testing Roadmap
 
-## Current Testing Status
+## 🛡️ Current Testing Status
 
-**Test Coverage: ~9.46% (537/5675 regions)**
+**Overall Status**: ✅ Strong Coverage for Logic; 🚧 Needs Real Hardware Automation.
 
-### Existing Tests (33 unit tests passing)
+### Existing Tests (Passing)
 
-#### Domain Layer Tests (12 tests)
-- `types.rs`: 6 tests (Capacity, Address, JedecId, Progress, FlashOptions)
-- `chip.rs`: 1 test (Layout calculations)
-- `bad_block.rs`: 2 tests (Strategy logic, BadBlockTable operations)
-- `ecc.rs`: 2 tests (Policy and Status helpers)
-- `flash_operation.rs`: 1 test (Trait default implementations)
+#### 1. Unit Tests (Domain & Application)
+ Comprehensive unit testing covers the core business logic and use cases without requiring external dependencies.
+- **Domain Layer**: 100% coverage of core types (`Address`, `Capacity`), logic (`BadBlock`, `ECC`), and traits.
+- **Application Layer**: Mock-based testing for all primary Use Cases (`Read`, `Write`, `Erase`, `Verify`, `Detect`).
 
-#### Application Layer Tests (8 tests)
-- `read_flash.rs`: 1 test (Use case flow)
-- `write_flash.rs`: 1 test (Use case flow)
-- `erase_flash.rs`: 1 test (Use case flow)
-- `verify_flash.rs`: 2 tests (Success and failure scenarios)
-- `status_flash.rs`: 1 test (Get/Set status)
-- `detect_chip.rs`: 2 tests (Known and unknown chip detection)
+#### 2. Infrastructure Tests
+- **NAND/NOR Protocols**: Validates packet formation, layout calculations, and spec access.
+- **Simulated Programmer**: Verifies the in-memory SPI flash simulator itself.
+- **Mock Programmer**: Validates the testing tooling.
 
-#### Infrastructure Layer Tests
+#### 3. Integration Tests (Simulated)
+- **E2E Lifecycle (`e2e_nand.rs`)**: A complete end-to-end integration test that simulates a physical SPI NAND chip.
+    - **Scenario**: Connects `SpiNand` protocol to `SimulatedProgrammer`.
+    - **Flow**: Erase Block -> Write Page -> Read Page -> Verify Content.
+    - **Validation**: Ensures the entire software stack (Drivers -> Protocol -> App) functions correctly together.
 
-**NAND Protocol Tests** (`src/infrastructure/flash_protocol/nand/tests.rs`): 4 tests
-- `test_nand_spec_access` - Verifies chip specification access
-- `test_nand_layout_calculations` - Tests page/block calculations
-- `test_mock_programmer_spi_read_bulk` - Tests bulk read operations
-- `test_mock_programmer_max_bulk_size` - Tests transfer size limits
+---
 
-**NOR Protocol Tests** (`src/infrastructure/flash_protocol/nor/tests.rs`): 4 tests
-- `test_nor_read_basic` - Basic read operation test
-- `test_nor_read_progress_callback` - Progress reporting test
-- `test_nor_spec_access` - Specification access test
-- `test_mock_programmer_transactions` - Mock programmer transaction test
+## 🎯 Testing Priorities & Gaps
 
-**Mock Programmer Tests** (`src/infrastructure/programmer/mock.rs`): 3 tests
-**EEPROM Tests** (`src/infrastructure/flash_protocol/eeprom/spi_25xxx.rs`): 2 tests
+### High Priority: Automation & CI
+The current tests run locally. We need to ensure they run on every commit.
+- [ ] **GitHub Actions Workflow**: automated `cargo test` on Push/PR.
+- [ ] **Clippy & FMT Check**: automated linting.
 
-#### Integration Tests
-- `e2e_nand.rs`: End-to-end simulation of NAND Erase/Write/Read lifecycle
+### Medium Priority: Real Hardware Verification
+Simulation is perfect for logic, but cannot catch physical layer issues (timing, electrical noise, USB latency).
+- [ ] **Hardware Test Script**: A script intended to be run by a developer with a specific reference chip (e.g., W25N01GV) connected to a CH341A.
+- [ ] **Compatibility Matrix**: A manual test log verifying support for different manufacturers (Winbond, Kioxia, Macronix).
 
-### Key Modules Needing Additional Tests
+### Low Priority: Performance & Fuzzing
+- [ ] **Benchmarks**: Measure throughput (MB/s) for different block sizes.
+- [ ] **Fuzzing**: Feed garbage data to the packet parsers to ensure robustness.
 
-#### Application Layer
-- `services/` - Pending implementation
+---
 
-#### Missing Integration Tests
-- Real hardware tests (requires physical device)
-- Hardware integration tests
-- Error handling scenarios
-- Performance benchmarks
+## 🏗️ Testing Infrastructure
 
-### Testing Infrastructure
-- Uses `mockall` for mocking framework
-- `MockProgrammer` for hardware simulation
-- Test setup focuses on infrastructure layer only
-- No domain or application layer test coverage
+### The Simulator (`SimulatedProgrammer`)
+We have built a custom SPI Flash Simulator in `src/infrastructure/programmer/simulator.rs`.
+- **Capabilities**:
+    - Simulates standard SPI NAND commands (0x02, 0x13, 0xD8, etc.).
+    - Maintains internal state: Memory Array, Page Buffer, Status Register, Write Enable Latch.
+    - Accurately models the page-load -> cache-read and program-load -> execute flows.
+- **Usage**: Used in `tests/e2e_nand.rs` to validate the full stack.
 
-## Testing Priorities
+### Mocking Framework
+- Uses `mockall` for creating isolated unit tests for Use Cases.
+- Allows testing error conditions (e.g., "Device Disconnected") that are hard to reproduce with real hardware.
 
-### High Priority
-1. **Domain Layer Tests** - Core business logic validation
-2. **Error Handling Tests** - Comprehensive error scenario coverage
-3. **Integration Tests** - End-to-end operation validation
-
-### Medium Priority
-1. **Application Layer Tests** - Use case validation
-2. **Performance Tests** - Benchmark critical operations
-3. **Hardware Compatibility Tests** - Real hardware validation
-
-### Low Priority
-1. **UI/CLI Tests** - Command-line interface testing
-2. **Documentation Tests** - Example code validation
-
-## Next Steps
-
-1. Create test files for domain layer modules
-2. Implement comprehensive error handling tests
-3. Add integration test suite with mock hardware
-4. Set up continuous integration testing
-5. Add performance benchmarking framework
+---
+*Last Updated: v0.4.1*
