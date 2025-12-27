@@ -54,8 +54,8 @@ let params = ReadParams {
     bad_block_strategy: BadBlockStrategy::Skip // 坏块处理策略
 };
 
-// 注意：`ReadRequest` 已新增 `retry_count` 字段（用于指定读取失败时的重试次数）。
-// 目前该字段为内部字段，尚未通过 `ReadParams` 或 CLI 暴露；计划在后续版本将其作为可配置项并实现自动重试逻辑。
+// `ReadRequest` 包含 `retry_count` 字段，可指定读取失败（或 ECC 错误）时的自动重试次数。
+// 该参数已通过 `ReadParams` 暴露。
 
 
 // 执行读取，带进度回调
@@ -146,6 +146,31 @@ verify_use_case.execute(params, |progress| {
 })?;
 
 println!("验证通过");
+
+## 6. 状态寄存器与写保护 (Status & Protect)
+
+```rust
+use nander_rs::application::StatusUseCase;
+
+// 创建状态用例
+let mut status_uc = StatusUseCase::new(Box::new(flash));
+
+// 读取状态寄存器
+let status = status_uc.get_status()?;
+println!("状态寄存器: {:?}", status);
+
+// 写入状态寄存器 (例如解除保护)
+status_uc.set_status(&[0x00])?;
+```
+
+## 7. 坏块表管理 (BBT)
+
+```rust
+// 扫描整个芯片寻找坏块
+let bbt = flash.scan_bbt(|p| println!("扫描: {:.1}%", p.percentage()))?;
+
+println!("找到 {} 个坏块", bbt.bad_block_count());
+```
 ```
 
 ## 完整示例

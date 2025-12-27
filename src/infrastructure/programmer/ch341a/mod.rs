@@ -167,9 +167,26 @@ impl Programmer for Ch341a {
     }
 
     fn spi_transaction_write(&mut self, tx: &[u8]) -> Result<()> {
-        self.set_cs(true)?;
-        self.spi_write(tx)?;
-        self.set_cs(false)?;
+        // Optimized: Combine CS and data into a single USB transfer
+        // This significantly reduces overhead for small writes (like commands)
+        let mut cmd = Vec::with_capacity(tx.len() + 10);
+
+        // 1. Assert CS
+        cmd.extend_from_slice(&protocol::build_cs_cmd(true));
+
+        // 2. Data
+        if !tx.is_empty() {
+            // Use stream command or simple append if we had a helper.
+            // Manually build the SPI stream command part here to inline it
+            // Note: build_spi_transfer_cmd includes the CMD_SPI_STREAM byte.
+            cmd.push(protocol::CMD_SPI_STREAM);
+            cmd.extend_from_slice(tx);
+        }
+
+        // 3. De-assert CS
+        cmd.extend_from_slice(&protocol::build_cs_cmd(false));
+
+        self.bulk_write(&cmd)?;
         Ok(())
     }
 

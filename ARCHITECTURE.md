@@ -42,7 +42,7 @@
 - `flash_operation.rs` - Flash 操作抽象接口
 - `bad_block.rs` - 坏块管理策略（BadBlockStrategy）
 - `ecc.rs` - ECC 控制策略（EccPolicy）
-- `error.rs` - 领域错误定义
+- `src/error.rs` - 全局错误定义 (注：目前位于根目录以方便各层共享资源)
 
 **示例**:
 ```rust

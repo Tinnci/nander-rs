@@ -1,8 +1,8 @@
 [package]
 name = "nander-rs"
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["driezy <shisoratsu@icloud.com>"]
 description = "A modern SPI NAND/NOR Flash programmer written in Rust, primarily for CH341A"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tinnci/nander-rs"
