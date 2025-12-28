@@ -4,6 +4,7 @@
 //! supporting CH340, CH341A UART mode, and CH347 UART mode.
 
 pub mod ch340;
+pub mod ch347;
 
 use crate::error::{Error, Result};
 use crate::infrastructure::programmer::traits::SerialPort;
@@ -18,7 +19,9 @@ pub const CH340N_PID: u16 = 0x5584;
 // CH341 in UART mode
 pub const CH341_UART_PID: u16 = 0x5523;
 
-// CH347 UART interface is typically on interface 0
+// CH347 USB identifiers
+pub const CH347_VID: u16 = 0x1A86;
+pub const CH347_PID: u16 = 0x55DB;
 
 /// Discover and open the first available serial port device
 pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
@@ -27,7 +30,16 @@ pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
     // Scan all USB devices
     let devices: Vec<_> = nusb::list_devices()?.collect();
 
-    // Look for CH340 devices first (pure UART)
+    // 1. Look for CH347 devices (Interface 0)
+    for device in &devices {
+        if device.vendor_id() == CH347_VID && device.product_id() == CH347_PID {
+            debug!("Found CH347 device");
+            let dev = device.clone().open()?;
+            return Ok(Box::new(ch347::Ch347Serial::new(dev)?));
+        }
+    }
+
+    // 2. Look for CH340 devices (pure UART)
     for device in &devices {
         if device.vendor_id() == CH340_VID {
             let pid = device.product_id();
@@ -39,7 +51,7 @@ pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
         }
     }
 
-    // Look for CH341 in UART mode
+    // 3. Look for CH341 in UART mode
     for device in &devices {
         if device.vendor_id() == CH340_VID && device.product_id() == CH341_UART_PID {
             debug!("Found CH341 in UART mode");
@@ -48,8 +60,6 @@ pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
         }
     }
 
-    // TODO: Add CH347 UART support (uses a different interface)
-
     Err(Error::Other(
         "No serial device found. Connect a CH340/CH341/CH347 device.".to_string(),
     ))
@@ -57,3 +67,4 @@ pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
 
 /// Re-export commonly used types
 pub use ch340::Ch340Serial;
+pub use ch347::Ch347Serial;
