@@ -1,5 +1,6 @@
 use super::messages::{GuiMessage, WorkerMessage};
 use crate::domain::ChipSpec;
+use crate::infrastructure::programmer::traits::{Parity, SerialConfig, StopBits};
 use eframe::{egui, App, Frame};
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{Receiver, Sender};
@@ -9,6 +10,7 @@ enum Tab {
     Read,
     Write,
     Erase,
+    Console,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,6 +45,51 @@ pub struct NanderApp {
     length: String,
     #[serde(skip)]
     preview_data: Vec<u8>,
+
+    // =========================================================================
+    // Console/Serial State
+    // =========================================================================
+    #[serde(skip)]
+    serial_connected: bool,
+    #[serde(skip)]
+    serial_port_name: Option<String>,
+    /// TX input buffer
+    console_tx_input: String,
+    /// RX display buffer
+    #[serde(skip)]
+    console_rx_buffer: Vec<u8>,
+    /// Display mode: true = Hex, false = ASCII
+    console_hex_mode: bool,
+    /// Auto-scroll RX area
+    console_auto_scroll: bool,
+    /// Add timestamp to received data
+    console_timestamp: bool,
+    /// Send with newline
+    console_send_newline: bool,
+    /// Newline type: 0=LF, 1=CR, 2=CRLF
+    console_newline_type: u8,
+    /// Baud rate
+    console_baud_rate: u32,
+    /// Data bits
+    console_data_bits: u8,
+    /// Parity
+    #[serde(skip)]
+    console_parity: Parity,
+    /// Stop bits
+    #[serde(skip)]
+    console_stop_bits: StopBits,
+    /// DTR state
+    #[serde(skip)]
+    console_dtr: bool,
+    /// RTS state
+    #[serde(skip)]
+    console_rts: bool,
+    /// TX byte counter
+    #[serde(skip)]
+    console_tx_count: usize,
+    /// RX byte counter
+    #[serde(skip)]
+    console_rx_count: usize,
 }
 
 impl Default for NanderApp {
@@ -66,6 +113,24 @@ impl Default for NanderApp {
             start_address: "0x0".to_string(),
             length: "".to_string(),
             preview_data: Vec::new(),
+            // Console defaults
+            serial_connected: false,
+            serial_port_name: None,
+            console_tx_input: String::new(),
+            console_rx_buffer: Vec::new(),
+            console_hex_mode: false,
+            console_auto_scroll: true,
+            console_timestamp: false,
+            console_send_newline: true,
+            console_newline_type: 0, // LF
+            console_baud_rate: 115200,
+            console_data_bits: 8,
+            console_parity: Parity::None,
+            console_stop_bits: StopBits::One,
+            console_dtr: false,
+            console_rts: false,
+            console_tx_count: 0,
+            console_rx_count: 0,
         }
     }
 }
@@ -162,6 +227,38 @@ impl NanderApp {
                         self.log(&format!("  {}", device));
                     }
                     self.log("===========================");
+                }
+                // Serial/Console messages
+                WorkerMessage::SerialConnected(name) => {
+                    self.serial_connected = true;
+                    self.serial_port_name = Some(name.clone());
+                    self.log(&format!("Serial port connected: {}", name));
+                }
+                WorkerMessage::SerialDisconnected => {
+                    self.serial_connected = false;
+                    self.serial_port_name = None;
+                    self.log("Serial port disconnected");
+                }
+                WorkerMessage::SerialConnectionFailed(err) => {
+                    self.log(&format!("Serial connection failed: {}", err));
+                    self.logs_open = true;
+                }
+                WorkerMessage::SerialDataReceived(data) => {
+                    self.console_rx_count += data.len();
+                    if self.console_timestamp {
+                        let timestamp = chrono::Local::now().format("%H:%M:%S.%3f ");
+                        self.console_rx_buffer
+                            .extend_from_slice(timestamp.to_string().as_bytes());
+                    }
+                    self.console_rx_buffer.extend_from_slice(&data);
+                    // Limit buffer size (keep last 64KB)
+                    if self.console_rx_buffer.len() > 64 * 1024 {
+                        let start = self.console_rx_buffer.len() - 64 * 1024;
+                        self.console_rx_buffer = self.console_rx_buffer[start..].to_vec();
+                    }
+                }
+                WorkerMessage::SerialSendComplete(bytes) => {
+                    self.console_tx_count += bytes;
                 }
             }
         }
@@ -263,6 +360,296 @@ impl NanderApp {
         } else {
             s.parse::<u32>().ok()
         }
+    }
+
+    // =========================================================================
+    // Console Tab Rendering
+    // =========================================================================
+
+    fn render_console_tab(&mut self, ui: &mut egui::Ui) {
+        ui.heading("🔌 Serial Console");
+
+        // Top row: Connection status and controls
+        ui.horizontal(|ui| {
+            // Connection status
+            if self.serial_connected {
+                if let Some(name) = &self.serial_port_name {
+                    ui.label(
+                        egui::RichText::new(format!("✓ {}", name)).color(egui::Color32::GREEN),
+                    );
+                }
+                if ui.button("Disconnect").clicked() {
+                    self.tx.send(GuiMessage::SerialDisconnect).ok();
+                }
+            } else {
+                ui.label(egui::RichText::new("○ Not Connected").color(egui::Color32::GRAY));
+                if ui.button("Connect").clicked() {
+                    // Apply config and connect
+                    let config = SerialConfig {
+                        baud_rate: self.console_baud_rate,
+                        data_bits: self.console_data_bits,
+                        parity: self.console_parity,
+                        stop_bits: self.console_stop_bits,
+                    };
+                    self.tx.send(GuiMessage::SerialConfigure(config)).ok();
+                    self.tx.send(GuiMessage::SerialConnect).ok();
+                }
+            }
+
+            ui.separator();
+
+            // TX/RX counters
+            ui.label(format!("TX: {} bytes", self.console_tx_count));
+            ui.label(format!("RX: {} bytes", self.console_rx_count));
+
+            if ui.button("Reset Counters").clicked() {
+                self.console_tx_count = 0;
+                self.console_rx_count = 0;
+            }
+        });
+
+        ui.separator();
+
+        // Two-column layout: Config on left, Console on right
+        ui.columns(2, |columns| {
+            // Left column: Configuration
+            columns[0].group(|ui| {
+                ui.heading("Configuration");
+
+                // Baud Rate
+                ui.horizontal(|ui| {
+                    ui.label("Baud Rate:");
+                    egui::ComboBox::from_id_salt("baud_rate")
+                        .selected_text(format!("{}", self.console_baud_rate))
+                        .show_ui(ui, |ui| {
+                            for &rate in SerialConfig::common_baud_rates() {
+                                ui.selectable_value(
+                                    &mut self.console_baud_rate,
+                                    rate,
+                                    format!("{}", rate),
+                                );
+                            }
+                        });
+                });
+
+                // Data Bits
+                ui.horizontal(|ui| {
+                    ui.label("Data Bits:");
+                    egui::ComboBox::from_id_salt("data_bits")
+                        .selected_text(format!("{}", self.console_data_bits))
+                        .show_ui(ui, |ui| {
+                            for bits in [5u8, 6, 7, 8] {
+                                ui.selectable_value(
+                                    &mut self.console_data_bits,
+                                    bits,
+                                    format!("{}", bits),
+                                );
+                            }
+                        });
+                });
+
+                // Parity
+                ui.horizontal(|ui| {
+                    ui.label("Parity:");
+                    egui::ComboBox::from_id_salt("parity")
+                        .selected_text(self.console_parity.as_str())
+                        .show_ui(ui, |ui| {
+                            for &p in Parity::all() {
+                                ui.selectable_value(&mut self.console_parity, p, p.as_str());
+                            }
+                        });
+                });
+
+                // Stop Bits
+                ui.horizontal(|ui| {
+                    ui.label("Stop Bits:");
+                    egui::ComboBox::from_id_salt("stop_bits")
+                        .selected_text(self.console_stop_bits.as_str())
+                        .show_ui(ui, |ui| {
+                            for &s in StopBits::all() {
+                                ui.selectable_value(&mut self.console_stop_bits, s, s.as_str());
+                            }
+                        });
+                });
+
+                ui.separator();
+
+                // Flow Control (DTR/RTS)
+                ui.heading("Flow Control");
+                ui.horizontal(|ui| {
+                    if ui.checkbox(&mut self.console_dtr, "DTR").changed() {
+                        self.tx
+                            .send(GuiMessage::SerialSetDtr(self.console_dtr))
+                            .ok();
+                    }
+                    if ui.checkbox(&mut self.console_rts, "RTS").changed() {
+                        self.tx
+                            .send(GuiMessage::SerialSetRts(self.console_rts))
+                            .ok();
+                    }
+                });
+
+                ui.separator();
+
+                // Display Options
+                ui.heading("Display Options");
+                ui.checkbox(&mut self.console_hex_mode, "Hex Mode");
+                ui.checkbox(&mut self.console_auto_scroll, "Auto-scroll");
+                ui.checkbox(&mut self.console_timestamp, "Show Timestamp");
+
+                ui.separator();
+
+                // Send Options
+                ui.heading("Send Options");
+                ui.checkbox(&mut self.console_send_newline, "Append Newline");
+                if self.console_send_newline {
+                    ui.horizontal(|ui| {
+                        ui.label("Newline:");
+                        ui.selectable_value(&mut self.console_newline_type, 0, "LF");
+                        ui.selectable_value(&mut self.console_newline_type, 1, "CR");
+                        ui.selectable_value(&mut self.console_newline_type, 2, "CRLF");
+                    });
+                }
+
+                ui.separator();
+
+                // Clear buffers
+                if ui.button("Clear RX Buffer").clicked() {
+                    self.console_rx_buffer.clear();
+                }
+            });
+
+            // Right column: TX/RX Console
+            columns[1].group(|ui| {
+                ui.heading("Received Data");
+
+                // RX Display Area
+                let rx_height = ui.available_height() * 0.6;
+                egui::ScrollArea::vertical()
+                    .id_salt("rx_scroll")
+                    .max_height(rx_height)
+                    .stick_to_bottom(self.console_auto_scroll)
+                    .show(ui, |ui| {
+                        ui.set_min_width(ui.available_width());
+                        if self.console_hex_mode {
+                            // Hex display
+                            self.render_console_hex_view(ui, &self.console_rx_buffer.clone());
+                        } else {
+                            // ASCII display
+                            let text = String::from_utf8_lossy(&self.console_rx_buffer);
+                            ui.add(
+                                egui::TextEdit::multiline(&mut text.to_string())
+                                    .font(egui::TextStyle::Monospace)
+                                    .desired_width(f32::INFINITY)
+                                    .interactive(false),
+                            );
+                        }
+                    });
+
+                ui.separator();
+
+                ui.heading("Send Data");
+
+                // TX Input Area
+                ui.horizontal(|ui| {
+                    let response = ui.add(
+                        egui::TextEdit::multiline(&mut self.console_tx_input)
+                            .font(egui::TextStyle::Monospace)
+                            .desired_width(ui.available_width() - 80.0)
+                            .desired_rows(3),
+                    );
+
+                    ui.vertical(|ui| {
+                        let can_send = self.serial_connected && !self.console_tx_input.is_empty();
+                        if ui
+                            .add_enabled(can_send, egui::Button::new("Send"))
+                            .clicked()
+                            || (response.lost_focus()
+                                && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                && ui.input(|i| i.modifiers.ctrl))
+                        {
+                            self.send_console_data();
+                        }
+
+                        if ui.button("Clear").clicked() {
+                            self.console_tx_input.clear();
+                        }
+                    });
+                });
+
+                ui.label(
+                    egui::RichText::new("Tip: Ctrl+Enter to send")
+                        .small()
+                        .color(egui::Color32::GRAY),
+                );
+            });
+        });
+    }
+
+    fn render_console_hex_view(&self, ui: &mut egui::Ui, data: &[u8]) {
+        if data.is_empty() {
+            ui.label("No data received yet.");
+            return;
+        }
+
+        let bytes_per_row = 16;
+        let total_rows = data.len().div_ceil(bytes_per_row);
+
+        for r in 0..total_rows.min(100) {
+            // Limit display to 100 rows for performance
+            let offset = r * bytes_per_row;
+            if offset >= data.len() {
+                break;
+            }
+            let end = std::cmp::min(offset + bytes_per_row, data.len());
+            let row_data = &data[offset..end];
+
+            let mut hex_str = String::with_capacity(50);
+            let mut ascii_str = String::with_capacity(bytes_per_row);
+
+            for (i, &b) in row_data.iter().enumerate() {
+                hex_str.push_str(&format!("{:02X} ", b));
+                if i == 7 {
+                    hex_str.push(' ');
+                }
+                if (32..=126).contains(&b) {
+                    ascii_str.push(b as char);
+                } else {
+                    ascii_str.push('.');
+                }
+            }
+
+            while hex_str.len() < 49 {
+                hex_str.push(' ');
+            }
+
+            ui.monospace(format!("{:04X}  {}  {}", offset, hex_str, ascii_str));
+        }
+
+        if total_rows > 100 {
+            ui.label(format!("... and {} more rows", total_rows - 100));
+        }
+    }
+
+    fn send_console_data(&mut self) {
+        if self.console_tx_input.is_empty() {
+            return;
+        }
+
+        let mut data = self.console_tx_input.as_bytes().to_vec();
+
+        // Append newline if configured
+        if self.console_send_newline {
+            match self.console_newline_type {
+                0 => data.push(b'\n'),                // LF
+                1 => data.push(b'\r'),                // CR
+                2 => data.extend_from_slice(b"\r\n"), // CRLF
+                _ => {}
+            }
+        }
+
+        self.tx.send(GuiMessage::SerialSend(data)).ok();
+        self.console_tx_input.clear();
     }
 }
 
@@ -385,6 +772,8 @@ impl App for NanderApp {
                 ui.selectable_value(&mut self.active_tab, Tab::Read, "Read");
                 ui.selectable_value(&mut self.active_tab, Tab::Write, "Write");
                 ui.selectable_value(&mut self.active_tab, Tab::Erase, "Erase");
+                ui.separator();
+                ui.selectable_value(&mut self.active_tab, Tab::Console, "🔌 Console");
             });
 
             ui.separator();
@@ -500,6 +889,9 @@ impl App for NanderApp {
                             .send(GuiMessage::EraseFlash { start, length: len })
                             .ok();
                     }
+                }
+                Tab::Console => {
+                    self.render_console_tab(ui);
                 }
             }
         });

@@ -1,4 +1,5 @@
 use crate::domain::{ChipSpec, Progress};
+use crate::infrastructure::programmer::traits::SerialConfig;
 use std::path::PathBuf;
 
 /// Messages sent from the UI/Main thread to the Background Worker
@@ -27,6 +28,22 @@ pub enum GuiMessage {
     SetCsIndex(u8),
     /// Request to cancel current operation
     Cancel,
+
+    // =========================================================================
+    // Serial/Console Messages
+    // =========================================================================
+    /// Connect to a serial port
+    SerialConnect,
+    /// Disconnect from serial port
+    SerialDisconnect,
+    /// Configure serial port parameters
+    SerialConfigure(SerialConfig),
+    /// Send data to serial port
+    SerialSend(Vec<u8>),
+    /// Set DTR line
+    SerialSetDtr(bool),
+    /// Set RTS line
+    SerialSetRts(bool),
 }
 
 /// Messages sent from the Background Worker to the UI
@@ -51,4 +68,18 @@ pub enum WorkerMessage {
     Log(String),
     /// List of detected devices (for diagnostic display)
     DeviceList(Vec<String>),
+
+    // =========================================================================
+    // Serial/Console Messages
+    // =========================================================================
+    /// Serial port connected
+    SerialConnected(String), // Port name
+    /// Serial port disconnected
+    SerialDisconnected,
+    /// Serial connection failed
+    SerialConnectionFailed(String),
+    /// Received data from serial port
+    SerialDataReceived(Vec<u8>),
+    /// Serial send complete
+    SerialSendComplete(usize), // bytes sent
 }

@@ -6,6 +6,7 @@ pub mod ch341a;
 pub mod ch347;
 pub mod device_database;
 pub mod ftdi;
+pub mod serial;
 pub mod simulator;
 pub mod spidev;
 pub mod traits;
@@ -17,8 +18,9 @@ pub use ch341a::Ch341a;
 pub use ch347::Ch347;
 pub use device_database::{DeviceCompatibility, DeviceInfo, WchDeviceDatabase};
 pub use ftdi::FtdiProgrammer;
+pub use serial::Ch340Serial;
 pub use spidev::SpidevProgrammer;
-pub use traits::Programmer;
+pub use traits::{Parity, Programmer, SerialConfig, SerialPort, StopBits};
 
 use crate::error::{Error, Result};
 use log::debug;

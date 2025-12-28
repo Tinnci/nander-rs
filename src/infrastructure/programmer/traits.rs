@@ -252,3 +252,142 @@ impl<P: Programmer + ?Sized> Programmer for &mut P {
         (**self).gpio_get(pin)
     }
 }
+
+// =============================================================================
+// Serial/UART Support
+// =============================================================================
+
+/// Serial parity options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Parity {
+    #[default]
+    None,
+    Odd,
+    Even,
+    Mark,
+    Space,
+}
+
+impl Parity {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Parity::None => "None",
+            Parity::Odd => "Odd",
+            Parity::Even => "Even",
+            Parity::Mark => "Mark",
+            Parity::Space => "Space",
+        }
+    }
+
+    pub fn all() -> &'static [Parity] {
+        &[
+            Parity::None,
+            Parity::Odd,
+            Parity::Even,
+            Parity::Mark,
+            Parity::Space,
+        ]
+    }
+}
+
+/// Serial stop bits options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StopBits {
+    #[default]
+    One,
+    OnePointFive,
+    Two,
+}
+
+impl StopBits {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StopBits::One => "1",
+            StopBits::OnePointFive => "1.5",
+            StopBits::Two => "2",
+        }
+    }
+
+    pub fn all() -> &'static [StopBits] {
+        &[StopBits::One, StopBits::OnePointFive, StopBits::Two]
+    }
+}
+
+/// Serial port configuration
+#[derive(Debug, Clone)]
+pub struct SerialConfig {
+    pub baud_rate: u32,
+    pub data_bits: u8,
+    pub parity: Parity,
+    pub stop_bits: StopBits,
+}
+
+impl Default for SerialConfig {
+    fn default() -> Self {
+        Self {
+            baud_rate: 115200,
+            data_bits: 8,
+            parity: Parity::None,
+            stop_bits: StopBits::One,
+        }
+    }
+}
+
+impl SerialConfig {
+    /// Common baud rates
+    pub fn common_baud_rates() -> &'static [u32] {
+        &[
+            300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800,
+            921600, 1000000, 2000000, 3000000,
+        ]
+    }
+}
+
+/// Trait for serial/UART communication
+pub trait SerialPort: Send {
+    /// Get the name/description of this serial port
+    fn name(&self) -> &str;
+
+    /// Configure the serial port parameters
+    fn configure(&mut self, config: &SerialConfig) -> Result<()>;
+
+    /// Read available data from the serial port (non-blocking)
+    /// Returns the number of bytes read
+    fn read(&mut self, buffer: &mut [u8]) -> Result<usize>;
+
+    /// Write data to the serial port
+    /// Returns the number of bytes written
+    fn write(&mut self, data: &[u8]) -> Result<usize>;
+
+    /// Set DTR (Data Terminal Ready) line state
+    fn set_dtr(&mut self, level: bool) -> Result<()> {
+        let _ = level;
+        Ok(()) // Default: no-op
+    }
+
+    /// Set RTS (Request To Send) line state
+    fn set_rts(&mut self, level: bool) -> Result<()> {
+        let _ = level;
+        Ok(()) // Default: no-op
+    }
+
+    /// Get current DTR state (if available)
+    fn get_dtr(&self) -> Option<bool> {
+        None
+    }
+
+    /// Get current RTS state (if available)
+    fn get_rts(&self) -> Option<bool> {
+        None
+    }
+
+    /// Flush output buffer
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Check if there's data available to read
+    fn bytes_available(&self) -> Result<usize> {
+        Ok(0)
+    }
+}

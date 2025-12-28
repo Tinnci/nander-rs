@@ -7,6 +7,7 @@ use crate::infrastructure::chip_database::registry::ChipRegistry;
 use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, MicrowireEeprom, SpiEeprom};
 use crate::infrastructure::flash_protocol::nand::SpiNand;
 use crate::infrastructure::flash_protocol::nor::SpiNor;
+use crate::infrastructure::programmer::traits::{SerialConfig, SerialPort};
 use crate::infrastructure::programmer::Programmer;
 use crate::presentation::gui::messages::{GuiMessage, WorkerMessage};
 use std::fs::File;
@@ -16,6 +17,8 @@ use std::sync::mpsc::{Receiver, Sender};
 pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
     // Worker state
     let mut programmer: Option<Box<dyn Programmer>> = None;
+    let mut serial_port: Option<Box<dyn SerialPort>> = None;
+    let mut serial_config: Option<SerialConfig> = None;
     let registry = ChipRegistry::default();
 
     while let Ok(msg) = rx.recv() {
@@ -393,6 +396,94 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                         }
                     }
                 }
+            }
+
+            // =========================================================================
+            // Serial/Console Message Handlers
+            // =========================================================================
+            GuiMessage::SerialConnect => {
+                // Try to discover and connect to a serial device
+                match crate::infrastructure::programmer::serial::discover_serial() {
+                    Ok(mut port) => {
+                        // Apply stored config if available
+                        if let Some(ref cfg) = serial_config {
+                            if let Err(e) = port.configure(cfg) {
+                                tx.send(WorkerMessage::Log(format!(
+                                    "Warning: Failed to apply config: {}",
+                                    e
+                                )))
+                                .ok();
+                            }
+                        }
+                        let name = port.name().to_string();
+                        serial_port = Some(port);
+                        tx.send(WorkerMessage::SerialConnected(name)).ok();
+                    }
+                    Err(e) => {
+                        tx.send(WorkerMessage::SerialConnectionFailed(e.to_string()))
+                            .ok();
+                    }
+                }
+            }
+            GuiMessage::SerialDisconnect => {
+                serial_port = None;
+                tx.send(WorkerMessage::SerialDisconnected).ok();
+            }
+            GuiMessage::SerialConfigure(config) => {
+                serial_config = Some(config);
+                // If already connected, apply config
+                if let Some(ref mut port) = serial_port {
+                    if let Some(ref cfg) = serial_config {
+                        if let Err(e) = port.configure(cfg) {
+                            tx.send(WorkerMessage::Log(format!(
+                                "Failed to configure serial: {}",
+                                e
+                            )))
+                            .ok();
+                        }
+                    }
+                }
+            }
+            GuiMessage::SerialSend(data) => {
+                if let Some(ref mut port) = serial_port {
+                    match port.write(&data) {
+                        Ok(n) => {
+                            tx.send(WorkerMessage::SerialSendComplete(n)).ok();
+                        }
+                        Err(e) => {
+                            tx.send(WorkerMessage::Log(format!("Serial send error: {}", e)))
+                                .ok();
+                        }
+                    }
+                }
+            }
+            GuiMessage::SerialSetDtr(level) => {
+                if let Some(ref mut port) = serial_port {
+                    if let Err(e) = port.set_dtr(level) {
+                        tx.send(WorkerMessage::Log(format!("DTR set error: {}", e)))
+                            .ok();
+                    }
+                }
+            }
+            GuiMessage::SerialSetRts(level) => {
+                if let Some(ref mut port) = serial_port {
+                    if let Err(e) = port.set_rts(level) {
+                        tx.send(WorkerMessage::Log(format!("RTS set error: {}", e)))
+                            .ok();
+                    }
+                }
+            }
+        }
+
+        // Poll serial port for incoming data (non-blocking)
+        if let Some(ref mut port) = serial_port {
+            let mut buf = [0u8; 1024];
+            match port.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    tx.send(WorkerMessage::SerialDataReceived(buf[..n].to_vec()))
+                        .ok();
+                }
+                _ => {}
             }
         }
     }
