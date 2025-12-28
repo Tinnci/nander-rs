@@ -150,18 +150,41 @@ impl SerialPort for Ch347Serial {
     }
 
     fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-        let result = block_on(
-            self.interface
-                .bulk_in(EP_IN, RequestBuffer::new(buffer.len().min(512))),
-        );
+        use std::time::Duration;
 
-        match result.into_result() {
-            Ok(data) => {
-                let len = data.len().min(buffer.len());
-                buffer[..len].copy_from_slice(&data[..len]);
-                Ok(len)
-            }
-            Err(e) => Err(Error::Other(format!("USB Error: {}", e))),
+        // Use a short timeout to keep the worker responsive
+        let read_future = self
+            .interface
+            .bulk_in(EP_IN, RequestBuffer::new(buffer.len().min(512)));
+
+        let timeout_future = async {
+            async_io::Timer::after(Duration::from_millis(10)).await;
+        };
+
+        let result = block_on(async {
+            futures_lite::future::or(
+                async {
+                    let r = read_future.await;
+                    Some(r)
+                },
+                async {
+                    timeout_future.await;
+                    None
+                },
+            )
+            .await
+        });
+
+        match result {
+            Some(transfer_result) => match transfer_result.into_result() {
+                Ok(data) => {
+                    let len = data.len().min(buffer.len());
+                    buffer[..len].copy_from_slice(&data[..len]);
+                    Ok(len)
+                }
+                Err(e) => Err(Error::Other(format!("USB Error: {}", e))),
+            },
+            None => Ok(0), // Timeout - no data available
         }
     }
 

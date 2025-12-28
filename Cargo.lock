@@ -2290,6 +2290,7 @@ name = "nander-rs"
 version = "0.5.5"
 dependencies = [
  "anyhow",
+ "async-io",
  "chrono",
  "clap",
  "colored",

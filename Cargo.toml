@@ -35,6 +35,7 @@ env_logger = "0.11"
 
 # Async runtime (for nusb)
 futures-lite = "2"
+async-io = "2"
 
 # Hex encoding for debugging
 hex = "0.4"
