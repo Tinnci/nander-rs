@@ -174,6 +174,13 @@ impl NanderApp {
                     self.is_busy = false;
                     self.logs_open = true; // Open logs on error
                 }
+                WorkerMessage::Disconnected => {
+                    self.programmer_name = None;
+                    self.chip_spec = None;
+                    self.log("Programmer disconnected");
+                    self.status_text = "Programmer Disconnected".to_string();
+                    self.is_busy = false;
+                }
                 WorkerMessage::ChipDetected(spec) => {
                     self.log(&format!(
                         "Chip detected: {} ({})",

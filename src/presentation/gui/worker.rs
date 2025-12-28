@@ -21,458 +21,464 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
     let mut serial_config: Option<SerialConfig> = None;
     let registry = ChipRegistry::default();
 
-    while let Ok(msg) = rx.recv() {
-        match msg {
-            GuiMessage::Connect => {
-                // First, enumerate devices and send diagnostic info
-                match nusb::list_devices() {
-                    Ok(devices) => {
-                        let wch_devices: Vec<String> = devices
-                            .filter(|d| d.vendor_id() == 0x1A86)
-                            .map(|d| {
-                                let info =
-                                    crate::infrastructure::programmer::WchDeviceDatabase::identify(
+    let mut last_programmer_probe = std::time::Instant::now();
+
+    loop {
+        // Handle incoming GUI messages
+        match rx.recv_timeout(std::time::Duration::from_millis(10)) {
+            Ok(msg) => match msg {
+                GuiMessage::Connect => {
+                    // First, enumerate devices and send diagnostic info
+                    match nusb::list_devices() {
+                        Ok(devices) => {
+                            let wch_devices: Vec<String> = devices
+                                .filter(|d| d.vendor_id() == 0x1A86)
+                                .map(|d| {
+                                    let info = crate::infrastructure::programmer::WchDeviceDatabase::identify(
                                         d.vendor_id(),
                                         d.product_id(),
                                     );
-                                format!("{}", info)
-                            })
-                            .collect();
+                                    format!("{}", info)
+                                })
+                                .collect();
 
-                        if !wch_devices.is_empty() {
-                            tx.send(WorkerMessage::DeviceList(wch_devices)).ok();
+                            if !wch_devices.is_empty() {
+                                tx.send(WorkerMessage::DeviceList(wch_devices)).ok();
+                            }
                         }
-                    }
-                    Err(_) => {
-                        tx.send(WorkerMessage::Log(
-                            "Failed to enumerate USB devices".to_string(),
-                        ))
-                        .ok();
-                    }
-                }
-
-                // Now attempt connection
-                match crate::infrastructure::programmer::discover(None) {
-                    Ok(p) => {
-                        let name = p.name().to_string();
-                        programmer = Some(p);
-                        tx.send(WorkerMessage::Connected(name)).ok();
-                    }
-                    Err(e) => {
-                        tx.send(WorkerMessage::ConnectionFailed(e.to_string())).ok();
-                    }
-                }
-            }
-            GuiMessage::DetectChip => {
-                if let Some(ref mut p) = programmer {
-                    let use_case = DetectChipUseCase::new(registry.clone());
-                    match use_case.identify_chip(p.as_mut()) {
-                        Ok(spec) => {
-                            tx.send(WorkerMessage::ChipDetected(spec)).ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::ChipDetectionFailed(e.to_string()))
-                                .ok();
-                        }
-                    }
-                } else {
-                    tx.send(WorkerMessage::ConnectionFailed("Not connected".to_string()))
-                        .ok();
-                }
-            }
-            GuiMessage::ReadFlash {
-                path,
-                start,
-                length,
-            } => {
-                if let Some(ref mut p) = programmer {
-                    let detect_use_case = DetectChipUseCase::new(registry.clone());
-                    let spec = match detect_use_case.identify_chip(p.as_mut()) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(format!(
-                                "Chip detection failed: {}",
-                                e
-                            )))
+                        Err(_) => {
+                            tx.send(WorkerMessage::Log(
+                                "Failed to enumerate USB devices".to_string(),
+                            ))
                             .ok();
-                            continue;
                         }
-                    };
+                    }
 
-                    let read_len = length.unwrap_or(spec.capacity.as_bytes() - start);
-                    let params = ReadParams {
-                        address: start,
-                        length: read_len,
-                        use_ecc: true,
-                        ignore_ecc_errors: false,
-                        oob_mode: OobMode::None,
-                        bad_block_strategy: BadBlockStrategy::Skip,
-                        bbt: None,
-                        retry_count: 3,
-                    };
+                    // Now attempt connection
+                    match crate::infrastructure::programmer::discover(None) {
+                        Ok(p) => {
+                            let name = p.name().to_string();
+                            programmer = Some(p);
+                            tx.send(WorkerMessage::Connected(name)).ok();
+                        }
+                        Err(e) => {
+                            tx.send(WorkerMessage::ConnectionFailed(e.to_string())).ok();
+                        }
+                    }
+                }
+                GuiMessage::DetectChip => {
+                    if let Some(ref mut p) = programmer {
+                        let use_case = DetectChipUseCase::new(registry.clone());
+                        match use_case.identify_chip(p.as_mut()) {
+                            Ok(spec) => {
+                                tx.send(WorkerMessage::ChipDetected(spec)).ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::ChipDetectionFailed(e.to_string()))
+                                    .ok();
+                            }
+                        }
+                    } else {
+                        tx.send(WorkerMessage::ConnectionFailed("Not connected".to_string()))
+                            .ok();
+                    }
+                }
+                GuiMessage::ReadFlash {
+                    path,
+                    start,
+                    length,
+                } => {
+                    if let Some(ref mut p) = programmer {
+                        let detect_use_case = DetectChipUseCase::new(registry.clone());
+                        let spec = match detect_use_case.identify_chip(p.as_mut()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(format!(
+                                    "Chip detection failed: {}",
+                                    e
+                                )))
+                                .ok();
+                                continue;
+                            }
+                        };
 
-                    let tx_progress = tx.clone();
-                    let result = match spec.flash_type {
-                        FlashType::Nand => {
-                            let protocol = SpiNand::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::Nor => {
-                            let protocol = SpiNor::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiEeprom => {
-                            let protocol = SpiEeprom::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::I2cEeprom => {
-                            let protocol = I2cEeprom::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::MicrowireEeprom => {
-                            let protocol = MicrowireEeprom::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiFram => {
-                            let protocol = SpiEeprom::new(p.as_mut(), spec);
-                            let mut use_case = ReadFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                    };
+                        let read_len = length.unwrap_or(spec.capacity.as_bytes() - start);
+                        let params = ReadParams {
+                            address: start,
+                            length: read_len,
+                            use_ecc: true,
+                            ignore_ecc_errors: false,
+                            oob_mode: OobMode::None,
+                            bad_block_strategy: BadBlockStrategy::Skip,
+                            bbt: None,
+                            retry_count: 3,
+                        };
 
-                    match result {
-                        Ok(data) => {
-                            match File::create(&path).and_then(|mut f| f.write_all(&data)) {
-                                Ok(_) => {
-                                    tx.send(WorkerMessage::DataRead(data)).ok();
+                        let tx_progress = tx.clone();
+                        let result = match spec.flash_type {
+                            FlashType::Nand => {
+                                let protocol = SpiNand::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::Nor => {
+                                let protocol = SpiNor::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiEeprom => {
+                                let protocol = SpiEeprom::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::I2cEeprom => {
+                                let protocol = I2cEeprom::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::MicrowireEeprom => {
+                                let protocol = MicrowireEeprom::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiFram => {
+                                let protocol = SpiEeprom::new(p.as_mut(), spec);
+                                let mut use_case = ReadFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                        };
+
+                        match result {
+                            Ok(data) => {
+                                match File::create(&path).and_then(|mut f| f.write_all(&data)) {
+                                    Ok(_) => {
+                                        tx.send(WorkerMessage::DataRead(data)).ok();
+                                    }
+                                    Err(e) => {
+                                        tx.send(WorkerMessage::OperationFailed(format!(
+                                            "File error: {}",
+                                            e
+                                        )))
+                                        .ok();
+                                    }
                                 }
-                                Err(e) => {
-                                    tx.send(WorkerMessage::OperationFailed(format!(
-                                        "File error: {}",
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
+                            }
+                        }
+                    } else {
+                        tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
+                            .ok();
+                    }
+                }
+                GuiMessage::WriteFlash {
+                    path,
+                    start,
+                    verify,
+                } => {
+                    if let Some(ref mut p) = programmer {
+                        let detect_use_case = DetectChipUseCase::new(registry.clone());
+                        let spec = match detect_use_case.identify_chip(p.as_mut()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(format!(
+                                    "Chip detection failed: {}",
+                                    e
+                                )))
+                                .ok();
+                                continue;
+                            }
+                        };
+
+                        // Read data from file
+                        let data = match std::fs::read(&path) {
+                            Ok(d) => d,
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(format!(
+                                    "Failed to read file: {}",
+                                    e
+                                )))
+                                .ok();
+                                continue;
+                            }
+                        };
+
+                        let params = WriteParams {
+                            address: start,
+                            data: &data,
+                            use_ecc: true,
+                            verify,
+                            ignore_ecc_errors: false,
+                            oob_mode: OobMode::None,
+                            bad_block_strategy: BadBlockStrategy::Skip,
+                            bbt: None,
+                            retry_count: 3,
+                        };
+
+                        let tx_progress = tx.clone();
+                        let result = match spec.flash_type {
+                            FlashType::Nand => {
+                                let protocol = SpiNand::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::Nor => {
+                                let protocol = SpiNor::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiEeprom => {
+                                let protocol = SpiEeprom::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::I2cEeprom => {
+                                let protocol = I2cEeprom::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::MicrowireEeprom => {
+                                let protocol = MicrowireEeprom::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiFram => {
+                                let protocol = SpiEeprom::new(p.as_mut(), spec);
+                                let mut use_case = WriteFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                        };
+
+                        match result {
+                            Ok(_) => {
+                                tx.send(WorkerMessage::OperationComplete).ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
+                            }
+                        }
+                    } else {
+                        tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
+                            .ok();
+                    }
+                }
+                GuiMessage::EraseFlash { start, length } => {
+                    if let Some(ref mut p) = programmer {
+                        let detect_use_case = DetectChipUseCase::new(registry.clone());
+                        let spec = match detect_use_case.identify_chip(p.as_mut()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(format!(
+                                    "Chip detection failed: {}",
+                                    e
+                                )))
+                                .ok();
+                                continue;
+                            }
+                        };
+
+                        let erase_len = length.unwrap_or(spec.capacity.as_bytes() - start);
+                        let params = EraseParams {
+                            address: start,
+                            length: erase_len,
+                            bad_block_strategy: BadBlockStrategy::Skip,
+                            bbt: None,
+                        };
+
+                        let tx_progress = tx.clone();
+                        let result = match spec.flash_type {
+                            FlashType::Nand => {
+                                let protocol = SpiNand::new(p.as_mut(), spec);
+                                let mut use_case = EraseFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::Nor => {
+                                let protocol = SpiNor::new(p.as_mut(), spec);
+                                let mut use_case = EraseFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiEeprom => {
+                                let protocol = SpiEeprom::new(p.as_mut(), spec);
+                                let mut use_case = EraseFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::I2cEeprom => {
+                                let protocol = I2cEeprom::new(p.as_mut(), spec);
+                                let mut use_case = EraseFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::MicrowireEeprom => {
+                                let protocol = MicrowireEeprom::new(p.as_mut(), spec);
+                                let mut use_case = EraseFlashUseCase::new(protocol);
+                                use_case.execute(params, |prog| {
+                                    tx_progress.send(WorkerMessage::Progress(prog)).ok();
+                                })
+                            }
+                            FlashType::SpiFram => {
+                                // FRAM doesn't need erase
+                                Ok(())
+                            }
+                        };
+
+                        match result {
+                            Ok(_) => {
+                                tx.send(WorkerMessage::OperationComplete).ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
+                            }
+                        }
+                    } else {
+                        tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
+                            .ok();
+                    }
+                }
+                GuiMessage::Cancel => {
+                    tx.send(WorkerMessage::Log(
+                        "Cancellation ignored (not implemented)".to_string(),
+                    ))
+                    .ok();
+                }
+                GuiMessage::SetSpeed(speed) => {
+                    if let Some(ref mut p) = programmer {
+                        match p.set_speed(speed) {
+                            Ok(_) => {
+                                tx.send(WorkerMessage::Log(format!("SPI speed set to {}", speed)))
+                                    .ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::Log(format!("Failed to set speed: {}", e)))
+                                    .ok();
+                            }
+                        }
+                    }
+                }
+                GuiMessage::SetCsIndex(index) => {
+                    if let Some(ref mut p) = programmer {
+                        match p.select_cs(index) {
+                            Ok(_) => {
+                                tx.send(WorkerMessage::Log(format!("CS line set to {}", index)))
+                                    .ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::Log(format!("Failed to set CS: {}", e)))
+                                    .ok();
+                            }
+                        }
+                    }
+                }
+
+                // =========================================================================
+                // Serial/Console Message Handlers
+                // =========================================================================
+                GuiMessage::SerialConnect => {
+                    // Try to discover and connect to a serial device
+                    match crate::infrastructure::programmer::serial::discover_serial() {
+                        Ok(mut port) => {
+                            // Apply stored config if available
+                            if let Some(ref cfg) = serial_config {
+                                if let Err(e) = port.configure(cfg) {
+                                    tx.send(WorkerMessage::Log(format!(
+                                        "Warning: Failed to apply config: {}",
                                         e
                                     )))
                                     .ok();
                                 }
                             }
+                            let name = port.name().to_string();
+                            serial_port = Some(port);
+                            tx.send(WorkerMessage::SerialConnected(name)).ok();
                         }
                         Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
-                        }
-                    }
-                } else {
-                    tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
-                        .ok();
-                }
-            }
-            GuiMessage::WriteFlash {
-                path,
-                start,
-                verify,
-            } => {
-                if let Some(ref mut p) = programmer {
-                    let detect_use_case = DetectChipUseCase::new(registry.clone());
-                    let spec = match detect_use_case.identify_chip(p.as_mut()) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(format!(
-                                "Chip detection failed: {}",
-                                e
-                            )))
-                            .ok();
-                            continue;
-                        }
-                    };
-
-                    // Read data from file
-                    let data = match std::fs::read(&path) {
-                        Ok(d) => d,
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(format!(
-                                "Failed to read file: {}",
-                                e
-                            )))
-                            .ok();
-                            continue;
-                        }
-                    };
-
-                    let params = WriteParams {
-                        address: start,
-                        data: &data,
-                        use_ecc: true,
-                        verify,
-                        ignore_ecc_errors: false,
-                        oob_mode: OobMode::None,
-                        bad_block_strategy: BadBlockStrategy::Skip,
-                        bbt: None,
-                        retry_count: 3,
-                    };
-
-                    let tx_progress = tx.clone();
-                    let result = match spec.flash_type {
-                        FlashType::Nand => {
-                            let protocol = SpiNand::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::Nor => {
-                            let protocol = SpiNor::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiEeprom => {
-                            let protocol = SpiEeprom::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::I2cEeprom => {
-                            let protocol = I2cEeprom::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::MicrowireEeprom => {
-                            let protocol = MicrowireEeprom::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiFram => {
-                            let protocol = SpiEeprom::new(p.as_mut(), spec);
-                            let mut use_case = WriteFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                    };
-
-                    match result {
-                        Ok(_) => {
-                            tx.send(WorkerMessage::OperationComplete).ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
-                        }
-                    }
-                } else {
-                    tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
-                        .ok();
-                }
-            }
-            GuiMessage::EraseFlash { start, length } => {
-                if let Some(ref mut p) = programmer {
-                    let detect_use_case = DetectChipUseCase::new(registry.clone());
-                    let spec = match detect_use_case.identify_chip(p.as_mut()) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(format!(
-                                "Chip detection failed: {}",
-                                e
-                            )))
-                            .ok();
-                            continue;
-                        }
-                    };
-
-                    let erase_len = length.unwrap_or(spec.capacity.as_bytes() - start);
-                    let params = EraseParams {
-                        address: start,
-                        length: erase_len,
-                        bad_block_strategy: BadBlockStrategy::Skip,
-                        bbt: None,
-                    };
-
-                    let tx_progress = tx.clone();
-                    let result = match spec.flash_type {
-                        FlashType::Nand => {
-                            let protocol = SpiNand::new(p.as_mut(), spec);
-                            let mut use_case = EraseFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::Nor => {
-                            let protocol = SpiNor::new(p.as_mut(), spec);
-                            let mut use_case = EraseFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiEeprom => {
-                            let protocol = SpiEeprom::new(p.as_mut(), spec);
-                            let mut use_case = EraseFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::I2cEeprom => {
-                            let protocol = I2cEeprom::new(p.as_mut(), spec);
-                            let mut use_case = EraseFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::MicrowireEeprom => {
-                            let protocol = MicrowireEeprom::new(p.as_mut(), spec);
-                            let mut use_case = EraseFlashUseCase::new(protocol);
-                            use_case.execute(params, |prog| {
-                                tx_progress.send(WorkerMessage::Progress(prog)).ok();
-                            })
-                        }
-                        FlashType::SpiFram => {
-                            // FRAM doesn't need erase
-                            Ok(())
-                        }
-                    };
-
-                    match result {
-                        Ok(_) => {
-                            tx.send(WorkerMessage::OperationComplete).ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::OperationFailed(e.to_string())).ok();
-                        }
-                    }
-                } else {
-                    tx.send(WorkerMessage::OperationFailed("Not connected".to_string()))
-                        .ok();
-                }
-            }
-            GuiMessage::Cancel => {
-                tx.send(WorkerMessage::Log(
-                    "Cancellation ignored (not implemented)".to_string(),
-                ))
-                .ok();
-            }
-            GuiMessage::SetSpeed(speed) => {
-                if let Some(ref mut p) = programmer {
-                    match p.set_speed(speed) {
-                        Ok(_) => {
-                            tx.send(WorkerMessage::Log(format!("SPI speed set to {}", speed)))
-                                .ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::Log(format!("Failed to set speed: {}", e)))
+                            tx.send(WorkerMessage::SerialConnectionFailed(e.to_string()))
                                 .ok();
                         }
                     }
                 }
-            }
-            GuiMessage::SetCsIndex(index) => {
-                if let Some(ref mut p) = programmer {
-                    match p.select_cs(index) {
-                        Ok(_) => {
-                            tx.send(WorkerMessage::Log(format!("CS line set to {}", index)))
-                                .ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::Log(format!("Failed to set CS: {}", e)))
-                                .ok();
-                        }
-                    }
+                GuiMessage::SerialDisconnect => {
+                    serial_port = None;
+                    tx.send(WorkerMessage::SerialDisconnected).ok();
                 }
-            }
-
-            // =========================================================================
-            // Serial/Console Message Handlers
-            // =========================================================================
-            GuiMessage::SerialConnect => {
-                // Try to discover and connect to a serial device
-                match crate::infrastructure::programmer::serial::discover_serial() {
-                    Ok(mut port) => {
-                        // Apply stored config if available
+                GuiMessage::SerialConfigure(config) => {
+                    serial_config = Some(config);
+                    // If already connected, apply config
+                    if let Some(ref mut port) = serial_port {
                         if let Some(ref cfg) = serial_config {
                             if let Err(e) = port.configure(cfg) {
                                 tx.send(WorkerMessage::Log(format!(
-                                    "Warning: Failed to apply config: {}",
+                                    "Failed to configure serial: {}",
                                     e
                                 )))
                                 .ok();
                             }
                         }
-                        let name = port.name().to_string();
-                        serial_port = Some(port);
-                        tx.send(WorkerMessage::SerialConnected(name)).ok();
-                    }
-                    Err(e) => {
-                        tx.send(WorkerMessage::SerialConnectionFailed(e.to_string()))
-                            .ok();
                     }
                 }
-            }
-            GuiMessage::SerialDisconnect => {
-                serial_port = None;
-                tx.send(WorkerMessage::SerialDisconnected).ok();
-            }
-            GuiMessage::SerialConfigure(config) => {
-                serial_config = Some(config);
-                // If already connected, apply config
-                if let Some(ref mut port) = serial_port {
-                    if let Some(ref cfg) = serial_config {
-                        if let Err(e) = port.configure(cfg) {
-                            tx.send(WorkerMessage::Log(format!(
-                                "Failed to configure serial: {}",
-                                e
-                            )))
-                            .ok();
+                GuiMessage::SerialSend(data) => {
+                    if let Some(ref mut port) = serial_port {
+                        match port.write(&data) {
+                            Ok(n) => {
+                                tx.send(WorkerMessage::SerialSendComplete(n)).ok();
+                            }
+                            Err(e) => {
+                                tx.send(WorkerMessage::Log(format!("Serial send error: {}", e)))
+                                    .ok();
+                            }
                         }
                     }
                 }
-            }
-            GuiMessage::SerialSend(data) => {
-                if let Some(ref mut port) = serial_port {
-                    match port.write(&data) {
-                        Ok(n) => {
-                            tx.send(WorkerMessage::SerialSendComplete(n)).ok();
-                        }
-                        Err(e) => {
-                            tx.send(WorkerMessage::Log(format!("Serial send error: {}", e)))
+                GuiMessage::SerialSetDtr(level) => {
+                    if let Some(ref mut port) = serial_port {
+                        if let Err(e) = port.set_dtr(level) {
+                            tx.send(WorkerMessage::Log(format!("DTR set error: {}", e)))
                                 .ok();
                         }
                     }
                 }
-            }
-            GuiMessage::SerialSetDtr(level) => {
-                if let Some(ref mut port) = serial_port {
-                    if let Err(e) = port.set_dtr(level) {
-                        tx.send(WorkerMessage::Log(format!("DTR set error: {}", e)))
-                            .ok();
+                GuiMessage::SerialSetRts(level) => {
+                    if let Some(ref mut port) = serial_port {
+                        if let Err(e) = port.set_rts(level) {
+                            tx.send(WorkerMessage::Log(format!("RTS set error: {}", e)))
+                                .ok();
+                        }
                     }
                 }
-            }
-            GuiMessage::SerialSetRts(level) => {
-                if let Some(ref mut port) = serial_port {
-                    if let Err(e) = port.set_rts(level) {
-                        tx.send(WorkerMessage::Log(format!("RTS set error: {}", e)))
-                            .ok();
-                    }
-                }
-            }
+            },
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
 
         // Poll serial port for incoming data (non-blocking)
@@ -483,7 +489,35 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                     tx.send(WorkerMessage::SerialDataReceived(buf[..n].to_vec()))
                         .ok();
                 }
-                _ => {}
+                Ok(_) => {}
+                Err(e) => {
+                    // Device might be disconnected
+                    tx.send(WorkerMessage::Log(format!(
+                        "Serial read error (possible disconnect): {}",
+                        e
+                    )))
+                    .ok();
+                    tx.send(WorkerMessage::SerialDisconnected).ok();
+                    serial_port = None;
+                }
+            }
+        }
+
+        // Periodically probe programmer to detect disconnect
+        if programmer.is_some()
+            && last_programmer_probe.elapsed() > std::time::Duration::from_millis(500)
+        {
+            last_programmer_probe = std::time::Instant::now();
+            if let Some(ref mut p) = programmer {
+                if let Err(e) = p.probe() {
+                    tx.send(WorkerMessage::Log(format!(
+                        "Programmer disconnected: {}",
+                        e
+                    )))
+                    .ok();
+                    tx.send(WorkerMessage::Disconnected).ok();
+                    programmer = None;
+                }
             }
         }
     }

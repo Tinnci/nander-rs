@@ -12,6 +12,12 @@ pub trait Programmer {
     /// Get the identification name of the programmer
     fn name(&self) -> &str;
 
+    /// Check if the programmer is still connected and responding.
+    /// Default implementation is a no-op that returns Ok(()).
+    fn probe(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     /// Execute a standard SPI transfer (Bidirectional)
     fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()>;
 
@@ -142,6 +148,10 @@ impl Programmer for Box<dyn Programmer> {
         self.as_ref().name()
     }
 
+    fn probe(&mut self) -> Result<()> {
+        self.as_mut().probe()
+    }
+
     fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()> {
         self.as_mut().spi_transfer(tx, rx)
     }
@@ -198,6 +208,10 @@ impl Programmer for Box<dyn Programmer> {
 impl<P: Programmer + ?Sized> Programmer for &mut P {
     fn name(&self) -> &str {
         (**self).name()
+    }
+
+    fn probe(&mut self) -> Result<()> {
+        (**self).probe()
     }
 
     fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()> {

@@ -52,6 +52,8 @@ pub enum WorkerMessage {
     Connected(String), // Programmer name
     /// Connection failed
     ConnectionFailed(String), // Error message
+    /// Programmer disconnected
+    Disconnected,
     /// Chip detected
     ChipDetected(ChipSpec),
     /// Chip detection failed

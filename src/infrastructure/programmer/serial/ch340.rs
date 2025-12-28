@@ -255,8 +255,6 @@ impl SerialPort for Ch340Serial {
     }
 
     fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-        // Try to read data - nusb handles this asynchronously
-        // We use a small buffer and block briefly
         let result = block_on(
             self.interface
                 .bulk_in(EP_IN, RequestBuffer::new(buffer.len().min(64))),
@@ -268,9 +266,9 @@ impl SerialPort for Ch340Serial {
                 buffer[..len].copy_from_slice(&data[..len]);
                 Ok(len)
             }
-            Err(_) => {
-                // No data or error - return 0 for non-blocking behavior
-                Ok(0)
+            Err(e) => {
+                // If the device is gone, return error to trigger disconnect in worker
+                Err(Error::Other(format!("USB Error: {}", e)))
             }
         }
     }

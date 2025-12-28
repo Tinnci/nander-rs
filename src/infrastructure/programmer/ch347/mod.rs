@@ -108,6 +108,12 @@ impl Programmer for Ch347 {
         }
     }
 
+    fn probe(&mut self) -> Result<()> {
+        let cmd = protocol::build_handshake_cmd();
+        self.usb_write_read(&cmd, 4)?;
+        Ok(())
+    }
+
     fn spi_transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<()> {
         if tx.is_empty() {
             return Ok(());

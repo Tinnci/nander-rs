@@ -161,7 +161,7 @@ impl SerialPort for Ch347Serial {
                 buffer[..len].copy_from_slice(&data[..len]);
                 Ok(len)
             }
-            Err(_) => Ok(0),
+            Err(e) => Err(Error::Other(format!("USB Error: {}", e))),
         }
     }
 

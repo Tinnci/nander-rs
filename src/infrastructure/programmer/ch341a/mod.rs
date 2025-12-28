@@ -82,6 +82,14 @@ impl Programmer for Ch341a {
         "CH341A USB Programmer"
     }
 
+    fn probe(&mut self) -> Result<()> {
+        // Simple status read to check if device is alive
+        let cmd = vec![protocol::CMD_GET_STATUS];
+        self.bulk_write(&cmd)?;
+        self.bulk_read(2)?;
+        Ok(())
+    }
+
     fn spi_transfer(&mut self, tx_data: &[u8], rx_data: &mut [u8]) -> Result<()> {
         if tx_data.is_empty() {
             return Ok(());
