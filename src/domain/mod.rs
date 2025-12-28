@@ -7,6 +7,7 @@ pub mod bad_block;
 pub mod chip;
 pub mod ecc;
 pub mod flash_operation;
+pub mod serial_analysis;
 pub mod types;
 
 // Re-exports

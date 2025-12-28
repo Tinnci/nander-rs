@@ -1,4 +1,5 @@
 use super::messages::{GuiMessage, WorkerMessage};
+use crate::domain::serial_analysis::RollingQualityAnalyzer;
 use crate::domain::ChipSpec;
 use crate::infrastructure::programmer::traits::{Parity, SerialConfig, StopBits};
 use eframe::{egui, App, Frame};
@@ -90,6 +91,12 @@ pub struct NanderApp {
     /// RX byte counter
     #[serde(skip)]
     console_rx_count: usize,
+    /// Data quality analyzer
+    #[serde(skip)]
+    console_quality: RollingQualityAnalyzer,
+    /// Baud rate detection results (baud, confidence, preview, protocol)
+    #[serde(skip)]
+    console_baud_results: Vec<(u32, f32, String, String)>,
 }
 
 impl Default for NanderApp {
@@ -131,6 +138,8 @@ impl Default for NanderApp {
             console_rts: false,
             console_tx_count: 0,
             console_rx_count: 0,
+            console_quality: RollingQualityAnalyzer::default(),
+            console_baud_results: Vec::new(),
         }
     }
 }
@@ -252,6 +261,7 @@ impl NanderApp {
                 }
                 WorkerMessage::SerialDataReceived(data) => {
                     self.console_rx_count += data.len();
+                    self.console_quality.process(&data);
                     if self.console_timestamp {
                         let timestamp = chrono::Local::now().format("%H:%M:%S.%3f ");
                         self.console_rx_buffer
@@ -266,6 +276,27 @@ impl NanderApp {
                 }
                 WorkerMessage::SerialSendComplete(bytes) => {
                     self.console_tx_count += bytes;
+                }
+                WorkerMessage::SerialAutoDetectProgress(p) => {
+                    self.progress = Some(p);
+                    self.status_text = format!("Scanning baud rates... {:.0}%", p * 100.0);
+                }
+                WorkerMessage::SerialBaudDetectionResults(results) => {
+                    self.progress = None;
+                    self.is_busy = false;
+                    self.status_text = "Detection complete".to_string();
+                    self.console_baud_results = results.clone();
+                    self.log("=== Baud Rate Detection Results ===");
+                    for (baud, confidence, preview, protocol) in results {
+                        self.log(&format!(
+                            "  {} baud: {:.1}% confidence | Protocol: {} | Preview: \"{}\"",
+                            baud,
+                            confidence * 100.0,
+                            protocol,
+                            preview.escape_debug()
+                        ));
+                    }
+                    self.log("===================================");
                 }
             }
         }
@@ -405,13 +436,32 @@ impl NanderApp {
 
             ui.separator();
 
-            // TX/RX counters
             ui.label(format!("TX: {} bytes", self.console_tx_count));
             ui.label(format!("RX: {} bytes", self.console_rx_count));
 
-            if ui.button("Reset Counters").clicked() {
+            if self.serial_connected {
+                let quality = self.console_quality.quality_level();
+                let score = self.console_quality.quality_score();
+                let (r, g, b) = quality.color();
+
+                ui.separator();
+                ui.label("Quality:");
+                ui.add(
+                    egui::ProgressBar::new(score)
+                        .text(quality.description())
+                        .fill(egui::Color32::from_rgb(r, g, b)),
+                );
+
+                let protocol = self.console_quality.protocol();
+                if protocol != crate::domain::serial_analysis::ProtocolType::Unknown {
+                    ui.label(format!("Protocol: {}", protocol.description()));
+                }
+            }
+
+            if ui.button("Reset").clicked() {
                 self.console_tx_count = 0;
                 self.console_rx_count = 0;
+                self.console_quality.reset();
             }
         });
 
@@ -437,7 +487,61 @@ impl NanderApp {
                                 );
                             }
                         });
+
+                    if ui
+                        .button("🔍 Auto")
+                        .on_hover_text("Auto-detect baud rate (scans common rates)")
+                        .clicked()
+                    {
+                        self.tx.send(GuiMessage::SerialAutoDetectBaud).ok();
+                        self.is_busy = true;
+                    }
                 });
+
+                // Display scan results
+                if !self.console_baud_results.is_empty() {
+                    ui.group(|ui| {
+                        ui.label(egui::RichText::new("Scan Results:").strong());
+                        for (baud, confidence, preview, protocol) in
+                            self.console_baud_results.clone()
+                        {
+                            let mut text = format!("{} baud ({:.0}%)", baud, confidence * 100.0);
+                            if protocol != "Unknown Protocol" {
+                                text = format!("{} - {}", text, protocol);
+                            }
+
+                            let color = if confidence > 0.8 {
+                                egui::Color32::GREEN
+                            } else if confidence > 0.4 {
+                                egui::Color32::YELLOW
+                            } else {
+                                egui::Color32::GRAY
+                            };
+
+                            if ui
+                                .button(egui::RichText::new(text).color(color))
+                                .on_hover_text(format!(
+                                    "Preview: \"{}\"",
+                                    preview.trim().escape_debug()
+                                ))
+                                .clicked()
+                            {
+                                self.console_baud_rate = baud;
+                                let config = SerialConfig {
+                                    baud_rate: baud,
+                                    data_bits: self.console_data_bits,
+                                    parity: self.console_parity,
+                                    stop_bits: self.console_stop_bits,
+                                };
+                                self.tx.send(GuiMessage::SerialConfigure(config)).ok();
+                                self.console_baud_results.clear();
+                            }
+                        }
+                        if ui.button("Clear Results").clicked() {
+                            self.console_baud_results.clear();
+                        }
+                    });
+                }
 
                 // Data Bits
                 ui.horizontal(|ui| {

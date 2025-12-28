@@ -2,6 +2,7 @@ use crate::application::use_cases::detect_chip::DetectChipUseCase;
 use crate::application::use_cases::erase_flash::{EraseFlashUseCase, EraseParams};
 use crate::application::use_cases::read_flash::{ReadFlashUseCase, ReadParams};
 use crate::application::use_cases::write_flash::{WriteFlashUseCase, WriteParams};
+use crate::domain::serial_analysis::{DataQualityMetrics, ProtocolType};
 use crate::domain::{BadBlockStrategy, FlashType, OobMode};
 use crate::infrastructure::chip_database::registry::ChipRegistry;
 use crate::infrastructure::flash_protocol::eeprom::{I2cEeprom, MicrowireEeprom, SpiEeprom};
@@ -474,6 +475,61 @@ pub fn run_worker(rx: Receiver<GuiMessage>, tx: Sender<WorkerMessage>) {
                             tx.send(WorkerMessage::Log(format!("RTS set error: {}", e)))
                                 .ok();
                         }
+                    }
+                }
+                GuiMessage::SerialAutoDetectBaud => {
+                    if let Some(ref mut port) = serial_port {
+                        let common_rates = SerialConfig::common_baud_rates();
+                        let total = common_rates.len();
+                        let mut results = Vec::new();
+
+                        // Store current config to restore later
+                        let original_config = serial_config.clone().unwrap_or_default();
+
+                        for (i, &rate) in common_rates.iter().enumerate() {
+                            // Send progress
+                            tx.send(WorkerMessage::SerialAutoDetectProgress(
+                                i as f32 / total as f32,
+                            ))
+                            .ok();
+
+                            // Configure port
+                            let mut cfg = original_config.clone();
+                            cfg.baud_rate = rate;
+                            if port.configure(&cfg).is_err() {
+                                continue;
+                            }
+
+                            // Wait and sample
+                            std::thread::sleep(std::time::Duration::from_millis(200));
+
+                            let mut buffer = [0u8; 256];
+                            if let Ok(n) = port.read(&mut buffer) {
+                                if n > 0 {
+                                    let metrics = DataQualityMetrics::analyze(&buffer[..n]);
+                                    let confidence = metrics.quality_score();
+                                    let protocol = ProtocolType::identify(&buffer[..n]);
+                                    let preview = String::from_utf8_lossy(&buffer[..n]).to_string();
+                                    results.push((
+                                        rate,
+                                        confidence,
+                                        preview,
+                                        protocol.description().to_string(),
+                                    ));
+                                }
+                            }
+                        }
+
+                        // Restore original config
+                        port.configure(&original_config).ok();
+
+                        // Sort results by confidence
+                        results.sort_by(|a, b| {
+                            b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+                        });
+
+                        tx.send(WorkerMessage::SerialBaudDetectionResults(results))
+                            .ok();
                     }
                 }
             },

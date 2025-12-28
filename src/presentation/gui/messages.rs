@@ -44,6 +44,8 @@ pub enum GuiMessage {
     SerialSetDtr(bool),
     /// Set RTS line
     SerialSetRts(bool),
+    /// Auto-detect baud rate
+    SerialAutoDetectBaud,
 }
 
 /// Messages sent from the Background Worker to the UI
@@ -84,4 +86,8 @@ pub enum WorkerMessage {
     SerialDataReceived(Vec<u8>),
     /// Serial send complete
     SerialSendComplete(usize), // bytes sent
+    /// Auto-detect baud rate progress
+    SerialAutoDetectProgress(f32),
+    /// Auto-detect baud rate results (baud_rate, confidence, preview, protocol)
+    SerialBaudDetectionResults(Vec<(u32, f32, String, String)>),
 }
