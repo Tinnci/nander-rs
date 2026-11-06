@@ -46,6 +46,13 @@ pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
         }
         "ch347" => {
             debug!("Initializing specific CH347 programmer");
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(p) = Ch347::open_wch_dll() {
+                    log::info!("CH347: Connected using WCH official vendor driver (CH347DLL)");
+                    return Ok(Box::new(p));
+                }
+            }
             let pids = [0x55DB, 0x55DE, 0x55DC];
             let mut found = None;
             for pid in pids {
@@ -83,6 +90,14 @@ pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
 /// Find and open the first available WCH programmer (Auto-detect)
 fn auto_discover_wch() -> Result<Box<dyn Programmer>> {
     debug!("Starting WCH programmer discovery...");
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(p) = Ch347::open_wch_dll() {
+            log::info!("CH347: Auto-detected and connected via WCH official driver (CH347DLL)");
+            return Ok(Box::new(p));
+        }
+    }
 
     // Find a supported USB device (returns DeviceInfo and its PID)
     let (device_info, pid) = find_supported_device()?;

@@ -3,6 +3,7 @@
 //! Supports WCH CH347T (0x1A86:0x55DB) and CH347F (0x1A86:0x55DE) in High-Speed SPI/I2C mode.
 
 pub mod protocol;
+pub mod wch_dll;
 
 use crate::error::{Error, Result};
 use crate::infrastructure::programmer::traits::Programmer;
@@ -17,21 +18,143 @@ pub const CH347T_PID: u16 = 0x55DB;
 pub const CH347F_PID: u16 = 0x55DE;
 pub const CH347_HID_PID: u16 = 0x55DC;
 
+pub enum Ch347Transport {
+    Usb {
+        #[allow(dead_code)]
+        device: Device,
+        interface: nusb::Interface,
+        out_endpoint: u8,
+        in_endpoint: u8,
+    },
+    #[cfg(target_os = "windows")]
+    WchDll {
+        dll: std::sync::Arc<wch_dll::WchDll>,
+        device_index: u32,
+    },
+}
+
+impl Ch347Transport {
+    fn bulk_write(&self, data: &[u8]) -> Result<()> {
+        match self {
+            Ch347Transport::Usb {
+                interface,
+                out_endpoint,
+                ..
+            } => {
+                let result = block_on(async {
+                    interface.bulk_out(*out_endpoint, data.to_vec()).await
+                });
+                result
+                    .status
+                    .map_err(|e| Error::Other(format!("CH347 bulk_out error: {}", e)))?;
+                Ok(())
+            }
+            #[cfg(target_os = "windows")]
+            Ch347Transport::WchDll { dll, device_index } => {
+                let mut transferred = data.len() as u32;
+                let ok = unsafe {
+                    (dll.write_data)(*device_index, data.as_ptr(), &mut transferred)
+                };
+                if ok == 0 || transferred != data.len() as u32 {
+                    return Err(Error::Other("CH347 WCH DLL write failed".into()));
+                }
+                Ok(())
+            }
+        }
+    }
+
+    fn bulk_read(&self, len: usize) -> Result<Vec<u8>> {
+        match self {
+            Ch347Transport::Usb {
+                interface,
+                in_endpoint,
+                ..
+            } => {
+                let result = block_on(async {
+                    interface.bulk_in(*in_endpoint, RequestBuffer::new(len)).await
+                });
+                let data = result
+                    .into_result()
+                    .map_err(|e| Error::Other(format!("CH347 bulk_in error: {}", e)))?;
+                Ok(data)
+            }
+            #[cfg(target_os = "windows")]
+            Ch347Transport::WchDll { dll, device_index } => {
+                let mut buf = vec![0u8; len];
+                let mut transferred = len as u32;
+                let ok = unsafe {
+                    (dll.read_data)(*device_index, buf.as_mut_ptr(), &mut transferred)
+                };
+                if ok == 0 {
+                    return Err(Error::Other("CH347 WCH DLL read failed".into()));
+                }
+                buf.truncate(transferred as usize);
+                Ok(buf)
+            }
+        }
+    }
+}
+
 pub struct Ch347 {
-    #[allow(dead_code)]
-    device: Device,
-    interface: nusb::Interface,
-    out_endpoint: u8,
-    in_endpoint: u8,
+    transport: Ch347Transport,
     current_speed: SpiSpeed,
     is_ch347f: bool,
     i2c_switched: bool,
+}
+
+impl Drop for Ch347 {
+    fn drop(&mut self) {
+        #[cfg(target_os = "windows")]
+        if let Ch347Transport::WchDll { dll, device_index } = &self.transport {
+            unsafe {
+                (dll.close_device)(*device_index);
+            }
+        }
+    }
 }
 
 impl Ch347 {
     /// Create a new CH347 instance from an opened device (defaults to CH347T)
     pub fn new(device: Device) -> Result<Self> {
         Self::with_pid(device, CH347T_PID)
+    }
+
+    #[cfg(target_os = "windows")]
+    /// Attempt to open the first available CH347 via Nanjing Qinheng (WCH) official driver DLL
+    pub fn open_wch_dll() -> Result<Self> {
+        let dll = wch_dll::WchDll::load()?;
+        for idx in 0..16 {
+            let handle = unsafe { (dll.open_device)(idx) };
+            if !handle.is_null() && (handle as isize) != -1 {
+                debug!("CH347: Successfully opened device index {} via WCH DLL", idx);
+                unsafe {
+                    (dll.set_timeout)(idx, 1000, 1000);
+                }
+
+                let mut info_buf = [0u8; 1024];
+                let mut is_ch347f = false;
+                let res = unsafe { (dll.get_device_infor)(idx, info_buf.as_mut_ptr()) };
+                if res != 0 {
+                    if info_buf.windows(4).any(|w| w.eq_ignore_ascii_case(b"55DE")) {
+                        is_ch347f = true;
+                    }
+                }
+
+                let mut programmer = Self {
+                    transport: Ch347Transport::WchDll {
+                        dll: dll.clone(),
+                        device_index: idx,
+                    },
+                    current_speed: SpiSpeed::Speed60M,
+                    is_ch347f,
+                    i2c_switched: false,
+                };
+
+                programmer.set_speed(SpiSpeed::Speed60M.to_u8())?;
+                return Ok(programmer);
+            }
+        }
+        Err(Error::ProgrammerNotFound)
     }
 
     /// Create a new CH347 instance specifying the product ID
@@ -81,10 +204,12 @@ impl Ch347 {
         let in_endpoint = discovered_in;
 
         let mut programmer = Self {
-            device,
-            interface,
-            out_endpoint,
-            in_endpoint,
+            transport: Ch347Transport::Usb {
+                device,
+                interface,
+                out_endpoint,
+                in_endpoint,
+            },
             current_speed: SpiSpeed::Speed60M, // Default 60MHz like SNANDer
             is_ch347f,
             i2c_switched: false,
@@ -139,27 +264,12 @@ impl Ch347 {
     /// Send a bulk write to the CH347 OUT endpoint
     fn bulk_write(&self, data: &[u8]) -> Result<()> {
         trace!("CH347 OUT: {:02X?}", data);
-        let result = block_on(async {
-            self.interface
-                .bulk_out(self.out_endpoint, data.to_vec())
-                .await
-        });
-        result
-            .status
-            .map_err(|e| Error::Other(format!("CH347 bulk_out error: {}", e)))?;
-        Ok(())
+        self.transport.bulk_write(data)
     }
 
     /// Read data from the CH347 IN endpoint
     fn bulk_read(&self, len: usize) -> Result<Vec<u8>> {
-        let result = block_on(async {
-            self.interface
-                .bulk_in(self.in_endpoint, RequestBuffer::new(len))
-                .await
-        });
-        let data = result
-            .into_result()
-            .map_err(|e| Error::Other(format!("CH347 bulk_in error: {}", e)))?;
+        let data = self.transport.bulk_read(len)?;
         trace!("CH347 IN: {:02X?}", data);
         Ok(data)
     }
