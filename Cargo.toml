@@ -4,13 +4,13 @@ version = "0.5.5"
 edition = "2021"
 rust-version = "1.87"
 authors = ["driezy <shisoratsu@icloud.com>"]
-description = "Modern SPI NAND/NOR Flash programmer for CH341A with cross-platform GUI and comprehensive diagnostics"
+description = "Modern SPI NAND/NOR Flash programmer for CH341A and CH347 with cross-platform GUI and comprehensive diagnostics"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tinnci/nander-rs"
 documentation = "https://docs.rs/nander-rs"
 homepage = "https://github.com/tinnci/nander-rs"
 readme = "README.md"
-keywords = ["flash", "spi", "nand", "programmer", "ch341a"]
+keywords = ["flash", "spi", "nand", "programmer", "ch341a", "ch347"]
 categories = ["embedded", "hardware-support", "command-line-utilities"]
 exclude = ["docs/*", "*.txt", ".github/*", "build_errors.txt"]
 

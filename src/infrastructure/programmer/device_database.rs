@@ -131,21 +131,41 @@ impl WchDeviceDatabase {
             0x55DB => DeviceInfo {
                 id: UsbDeviceId::new(vid, pid),
                 name: "CH347",
-                description: "USB to UART/I2C/SPI Bridge (High-Speed)",
+                description: "USB to UART/I2C/SPI Bridge (High-Speed Mode 1)",
                 compatibility: DeviceCompatibility::Supported,
                 help_message: Some(
                     "High-speed SPI bridge (up to 60MHz). This is the correct mode for flash programming!"
                 ),
             },
 
-            0x55DD => DeviceInfo {
+            0x55DE => DeviceInfo {
                 id: UsbDeviceId::new(vid, pid),
                 name: "CH347F",
-                description: "USB to JTAG/SWD/UART Bridge",
+                description: "USB to Dual-UART/I2C/SPI/JTAG Bridge (High-Speed)",
+                compatibility: DeviceCompatibility::Supported,
+                help_message: Some(
+                    "High-speed SPI bridge (up to 60MHz) with dual UART and SPI/I2C support!"
+                ),
+            },
+
+            0x55DC => DeviceInfo {
+                id: UsbDeviceId::new(vid, pid),
+                name: "CH347 (HID)",
+                description: "USB to UART/I2C/SPI Bridge (HID Mode 2)",
+                compatibility: DeviceCompatibility::Supported,
+                help_message: Some(
+                    "High-speed SPI bridge in HID composite mode."
+                ),
+            },
+
+            0x55DD => DeviceInfo {
+                id: UsbDeviceId::new(vid, pid),
+                name: "CH347 (JTAG)",
+                description: "USB to JTAG/SWD/UART Bridge (Mode 3)",
                 compatibility: DeviceCompatibility::RelatedDevice,
                 help_message: Some(
-                    "CH347F is primarily for JTAG/SWD debugging.\n\
-                    For flash programming, use CH341A (0x5512) or CH347 (0x55DB)."
+                    "CH347 Mode 3 is primarily for JTAG/SWD debugging.\n\
+                    For flash programming, set the mode switch to Mode 1 (0x55DB) or use CH347F (0x55DE)."
                 ),
             },
 
@@ -194,7 +214,9 @@ impl WchDeviceDatabase {
     pub fn supported_programmers() -> Vec<UsbDeviceId> {
         vec![
             UsbDeviceId::new(Self::WCH_VID, 0x5512), // CH341A SPI Mode
-            UsbDeviceId::new(Self::WCH_VID, 0x55DB), // CH347 SPI Mode
+            UsbDeviceId::new(Self::WCH_VID, 0x55DB), // CH347 / CH347T SPI Mode
+            UsbDeviceId::new(Self::WCH_VID, 0x55DE), // CH347F SPI Mode
+            UsbDeviceId::new(Self::WCH_VID, 0x55DC), // CH347 Mode 2 SPI Mode
         ]
     }
 }
@@ -236,6 +258,10 @@ mod tests {
         let info = WchDeviceDatabase::identify(0x1A86, 0x55DB);
         assert_eq!(info.compatibility, DeviceCompatibility::Supported);
         assert_eq!(info.name, "CH347");
+
+        let info_f = WchDeviceDatabase::identify(0x1A86, 0x55DE);
+        assert_eq!(info_f.compatibility, DeviceCompatibility::Supported);
+        assert_eq!(info_f.name, "CH347F");
     }
 
     #[test]
