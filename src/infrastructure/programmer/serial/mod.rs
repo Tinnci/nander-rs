@@ -22,6 +22,7 @@ pub const CH341_UART_PID: u16 = 0x5523;
 // CH347 USB identifiers
 pub const CH347_VID: u16 = 0x1A86;
 pub const CH347_PID: u16 = 0x55DB;
+pub const CH347F_PID: u16 = 0x55DE;
 
 /// Discover and open the first available serial port device
 pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
@@ -32,8 +33,10 @@ pub fn discover_serial() -> Result<Box<dyn SerialPort>> {
 
     // 1. Look for CH347 devices (Interface 0)
     for device in &devices {
-        if device.vendor_id() == CH347_VID && device.product_id() == CH347_PID {
-            debug!("Found CH347 device");
+        if device.vendor_id() == CH347_VID
+            && (device.product_id() == CH347_PID || device.product_id() == CH347F_PID)
+        {
+            debug!("Found CH347 device (PID: 0x{:04X})", device.product_id());
             let dev = device.clone().open()?;
             return Ok(Box::new(ch347::Ch347Serial::new(dev)?));
         }
