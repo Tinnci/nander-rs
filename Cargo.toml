@@ -53,7 +53,7 @@ path = "src/main.rs"
 
 [dev-dependencies]
 # Mocking framework for unit tests
-mockall = "0.13"
+mockall = "0.15"
 
 # Tempfile for test file operations
 tempfile = "3"
