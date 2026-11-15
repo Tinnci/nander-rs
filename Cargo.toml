@@ -15,7 +15,7 @@ exclude = ["docs/*", "*.txt", ".github/*", "build_errors.txt"]
 
 [dependencies]
 # USB communication (pure Rust, no libusb needed)
-nusb = "0.1"
+nusb = "0.2"
 
 # CLI argument parsing
 clap = { version = "4", features = ["derive"] }
