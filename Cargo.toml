@@ -15,7 +15,7 @@ exclude = ["docs/*", "*.txt", ".github/*", "build_errors.txt"]
 
 [dependencies]
 # USB communication (pure Rust, no libusb needed)
-nusb = "0.1"
+nusb = "0.2"
 
 # CLI argument parsing
 clap = { version = "4", features = ["derive"] }
@@ -25,8 +25,8 @@ thiserror = "2"
 anyhow = "1"
 
 # Progress bar
-indicatif = "0.17"
-colored = "2"
+indicatif = "0.18"
+colored = "3"
 
 # Logging
 log = "0.4"
@@ -40,12 +40,12 @@ async-io = "2"
 hex = "0.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.148"
-toml = "0.8"
+toml = "0.9"
 eframe = { version = "0.33.3", features = ["persistence"] }
-egui = "0.33.3"
-egui_extras = { version = "0.33.3", features = ["all_loaders"] }
+egui = "0.34.3"
+egui_extras = { version = "0.34.3", features = ["all_loaders"] }
 chrono = "0.4.42"
-rfd = "0.15"
+rfd = "0.18"
 
 [[bin]]
 name = "nander"
@@ -53,7 +53,7 @@ path = "src/main.rs"
 
 [dev-dependencies]
 # Mocking framework for unit tests
-mockall = "0.13"
+mockall = "0.15"
 
 # Tempfile for test file operations
 tempfile = "3"
