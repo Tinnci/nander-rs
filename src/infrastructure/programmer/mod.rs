@@ -37,30 +37,45 @@ pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
             let p = SpidevProgrammer::new_raspberry_pi_default()?;
             Ok(Box::new(p))
         }
-        "ch341a" | "ch347" | "ftdi" => {
-            // For USB devices, we might want to still scan but look for specific VIDs/PIDs
-            // For now, let's reuse the auto-discovery but filter post-facto or modify find logic.
-            // Simplified: existing WCH logic covers CH341A/CH347
-            if driver == "ftdi" {
-                // FTDI usually 0x0403
-                // Call FTDI constructor directly if possible, or scan for FTDI
-                // Since FtdiProgrammer::new takes a device, we need to find it.
-                // But FtdiProgrammer is a stub that returns Error, so let's just use a dummy device or find one.
-                // Actually the stub takes `nusb::Device`.
-                // Let's implement a basic find_usb_device for FTDI.
-                let device = find_usb_device(0x0403, 0x6014) // FT232H default
-                    .or_else(|_| find_usb_device(0x0403, 0x6010)) // FT2232H
-                    .map_err(|_| Error::ProgrammerNotFound)?;
-                let p = FtdiProgrammer::new(device)?;
-                Ok(Box::new(p))
-            } else {
-                // For CH34x, use the existing robust logic but verify the result
-                let p = auto_discover_wch()?;
-                // weak check: if user asked for CH347 but got CH341A, warn or error?
-                // The auto_discover_wch returns a Box<dyn Programmer>. We can't easily check type.
-                // But the user can see the name.
-                Ok(p)
+        "ch341a" => {
+            debug!("Initializing specific CH341A programmer");
+            let device = find_usb_device(WchDeviceDatabase::WCH_VID, 0x5512)
+                .map_err(|_| Error::Other("CH341A device (1A86:5512) not found.".to_string()))?;
+            let p = Ch341a::new(device)?;
+            Ok(Box::new(p))
+        }
+        "ch347" => {
+            debug!("Initializing specific CH347 programmer");
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(p) = Ch347::open_wch_dll() {
+                    log::info!("CH347: Connected using WCH official vendor driver (CH347DLL)");
+                    return Ok(Box::new(p));
+                }
             }
+            let pids = [0x55DB, 0x55DE, 0x55DC];
+            let mut found = None;
+            for pid in pids {
+                if let Ok(device) = find_usb_device(WchDeviceDatabase::WCH_VID, pid) {
+                    found = Some((device, pid));
+                    break;
+                }
+            }
+            let (device, pid) = found.ok_or_else(|| {
+                Error::Other(
+                    "CH347 device (1A86:55DB / 1A86:55DE) not found. Check connection or mode switch."
+                        .to_string(),
+                )
+            })?;
+            let p = Ch347::with_pid(device, pid)?;
+            Ok(Box::new(p))
+        }
+        "ftdi" => {
+            let device = find_usb_device(0x0403, 0x6014) // FT232H default
+                .or_else(|_| find_usb_device(0x0403, 0x6010)) // FT2232H
+                .map_err(|_| Error::ProgrammerNotFound)?;
+            let p = FtdiProgrammer::new(device)?;
+            Ok(Box::new(p))
         }
         "sim" | "simulator" => {
             debug!("Initializing simulated programmer");
@@ -75,6 +90,14 @@ pub fn discover(driver_name: Option<&str>) -> Result<Box<dyn Programmer>> {
 /// Find and open the first available WCH programmer (Auto-detect)
 fn auto_discover_wch() -> Result<Box<dyn Programmer>> {
     debug!("Starting WCH programmer discovery...");
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(p) = Ch347::open_wch_dll() {
+            log::info!("CH347: Auto-detected and connected via WCH official driver (CH347DLL)");
+            return Ok(Box::new(p));
+        }
+    }
 
     // Find a supported USB device (returns DeviceInfo and its PID)
     let (device_info, pid) = find_supported_device()?;
@@ -91,9 +114,9 @@ fn auto_discover_wch() -> Result<Box<dyn Programmer>> {
             let p = Ch341a::new(device)?;
             Ok(Box::new(p))
         }
-        0x55DB => {
-            debug!("Initializing CH347 programmer (High-Speed)");
-            let p = Ch347::new(device)?;
+        0x55DB | 0x55DE | 0x55DC => {
+            debug!("Initializing CH347 programmer (PID: 0x{:04X})", pid);
+            let p = Ch347::with_pid(device, pid)?;
             Ok(Box::new(p))
         }
         _ => Err(Error::ProgrammerNotFound),
@@ -140,7 +163,7 @@ fn find_supported_device() -> Result<(nusb::DeviceInfo, u16)> {
         }
     } else {
         debug!("No WCH devices found on this system");
-        debug!("Supported devices: CH341A (1A86:5512), CH347 (1A86:55DB)");
+        debug!("Supported devices: CH341A (1A86:5512), CH347T (1A86:55DB), CH347F (1A86:55DE)");
     }
 
     // Look for a supported programmer
@@ -175,7 +198,7 @@ fn find_supported_device() -> Result<(nusb::DeviceInfo, u16)> {
                     format!(
                         "No WCH programmer detected.\n\
                         Found {} other USB device(s), but none are supported programmers.\n\
-                        Please connect a CH341A (1A86:5512) or CH347 (1A86:55DB) device.",
+                        Please connect a CH341A (1A86:5512) or CH347 (1A86:55DB / 1A86:55DE) device.",
                         all_devices.len()
                     )
                 }

@@ -18,8 +18,9 @@ pub struct Args {
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
-    /// SPI speed setting (0=~21kHz, 1=~100kHz, 2=~400kHz, 3=~750kHz, 4=~1.5MHz, 5=~3MHz, 6=~6MHz, 7=~12MHz)
-    /// Higher speeds may not work with all chips. Default: 5 (~3MHz)
+    /// SPI speed setting (0-7):
+    /// For CH347: 0=60MHz, 1=30MHz, 2=15MHz, 3=7.5MHz, 4=3.75MHz, 5=1.875MHz, 6=937.5kHz, 7=468.75kHz.
+    /// For CH341A: 0=~21kHz, 1=~100kHz, 2=~400kHz, 3=~750kHz, 4=~1.5MHz, 5=~3MHz (default), 6=~6MHz, 7=~12MHz.
     #[arg(long = "speed", global = true, default_value = "5", value_parser = clap::value_parser!(u8).range(0..8))]
     pub spi_speed: u8,
 

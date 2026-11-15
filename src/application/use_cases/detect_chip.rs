@@ -37,21 +37,57 @@ impl DetectChipUseCase {
 
     /// Identify the connected chip using the provided programmer
     pub fn identify_chip(&self, programmer: &mut dyn Programmer) -> Result<ChipSpec> {
-        // Read JEDEC ID
+        // 1. First attempt: Standard Read ID command (0x9F)
         programmer.set_cs(true)?;
-        // Standard Read ID command is 0x9F
         programmer.spi_write(&[0x9F])?;
         let id_bytes = programmer.spi_read(3)?;
         programmer.set_cs(false)?;
 
         let jedec = JedecId::new([id_bytes[0], id_bytes[1], id_bytes[2]]);
 
-        // Lookup in registry
-        let spec = self.registry.find_by_id(jedec).ok_or_else(|| {
-            crate::error::Error::UnsupportedChip(id_bytes[0], id_bytes[1], id_bytes[2])
-        })?;
+        // If direct match found (or matched via NAND shift fallback)
+        if let Some(spec) = self.registry.find_by_id(jedec) {
+            return Ok(spec);
+        }
 
-        Ok(spec)
+        // 2. Explicit probe using standard SPI NAND Read ID command (0x9F 0x00)
+        programmer.set_cs(true)?;
+        if programmer.spi_write(&[0x9F, 0x00]).is_ok() {
+            if let Ok(nand_id) = programmer.spi_read(3) {
+                programmer.set_cs(false)?;
+
+                let jedec_nand = JedecId::new([nand_id[0], nand_id[1], nand_id[2]]);
+                if let Some(spec) = self.registry.find_by_id(jedec_nand) {
+                    return Ok(spec);
+                }
+
+                let jedec_nand_2b = JedecId::new([nand_id[0], nand_id[1], 0x00]);
+                if let Some(spec) = self.registry.find_by_id(jedec_nand_2b) {
+                    return Ok(spec);
+                }
+
+                if nand_id[0] != 0xFF && nand_id[0] != 0x00 {
+                    return Err(crate::error::Error::UnsupportedChip(
+                        nand_id[0], nand_id[1], nand_id[2],
+                    ));
+                }
+            } else {
+                programmer.set_cs(false)?;
+            }
+        } else {
+            programmer.set_cs(false)?;
+        }
+
+        // 3. Return UnsupportedChip with best information
+        if id_bytes[0] == 0xFF && id_bytes[1] != 0xFF {
+            Err(crate::error::Error::UnsupportedChip(
+                id_bytes[1], id_bytes[2], 0x00,
+            ))
+        } else {
+            Err(crate::error::Error::UnsupportedChip(
+                id_bytes[0], id_bytes[1], id_bytes[2],
+            ))
+        }
     }
 
     pub fn list_supported_chips(&self) -> Vec<ChipSpec> {
@@ -121,5 +157,39 @@ mod tests {
             }
             _ => panic!("Expected UnsupportedChip error"),
         }
+    }
+
+    #[test]
+    fn test_detect_nand_chip_with_shifted_dummy_byte() {
+        // Test chip: GD5F1GQ5RE (C8 41 00)
+        let nand_jedec = JedecId::new([0xC8, 0x41, 0x00]);
+        let nand_chip = ChipSpec {
+            name: "GD5F1GQ5RE / GD5F1GQ5REYIG".to_string(),
+            manufacturer: "GigaDevice".to_string(),
+            jedec_id: nand_jedec,
+            flash_type: FlashType::Nand,
+            capacity: Capacity::bytes(128 * 1024 * 1024),
+            layout: ChipLayout {
+                page_size: 2048,
+                block_size: 128 * 1024,
+                oob_size: Some(128),
+                is_dataflash: false,
+            },
+            capabilities: ChipCapabilities::default(),
+            otp: None,
+        };
+        let registry = ChipRegistry::from_specs(vec![nand_chip.clone()]);
+        let use_case = DetectChipUseCase::new(registry);
+
+        // When reading an SPI NAND chip with standard 0x9F, the chip outputs 0xFF
+        // during dummy byte, followed by 0xC8, 0x41: [0xFF, 0xC8, 0x41]
+        let mut mock = MockProgrammer::new();
+        mock.expect_reads(vec![vec![0xFF], vec![0xFF, 0xC8, 0x41]]);
+
+        let result = use_case.identify_chip(&mut mock);
+        assert!(result.is_ok(), "Expected to detect NAND chip from shifted bytes");
+        let detected = result.unwrap();
+        assert_eq!(detected.name, "GD5F1GQ5RE / GD5F1GQ5REYIG");
+        assert_eq!(detected.jedec_id, nand_jedec);
     }
 }

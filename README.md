@@ -57,8 +57,8 @@ nander gui
 ## 🛠 Supported Hardware
 
 ### Programmers
-- **CH341A** - USB SPI programmer (Standard)
-- **CH347** - High-speed USB SPI programmer (up to 60MHz)
+- **CH341A** - USB SPI programmer (Standard, up to ~12MHz)
+- **CH347** - High-speed USB SPI/I2C programmer (CH347T & CH347F, up to 60MHz)
 
 ### Flash Types
 - **SPI NAND** - With OOB and bad block management
