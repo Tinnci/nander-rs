@@ -234,9 +234,7 @@ impl SimulatedProgrammer {
                     let end_addr = start_addr + state.block_size;
 
                     if (end_addr as usize) <= state.memory.len() {
-                        for i in start_addr as usize..end_addr as usize {
-                            state.memory[i] = 0xFF; // Erase to 0xFF
-                        }
+                        state.memory[start_addr as usize..end_addr as usize].fill(0xFF);
                     }
                     state.write_enabled = false;
                 }

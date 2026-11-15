@@ -8,7 +8,6 @@ description = "Modern SPI NAND/NOR Flash programmer for CH341A with cross-platfo
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tinnci/nander-rs"
 documentation = "https://docs.rs/nander-rs"
-homepage = "https://github.com/tinnci/nander-rs"
 readme = "README.md"
 keywords = ["flash", "spi", "nand", "programmer", "ch341a"]
 categories = ["embedded", "hardware-support", "command-line-utilities"]

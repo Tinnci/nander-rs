@@ -138,11 +138,7 @@ impl<P: Programmer> SpiNand<P> {
 
         // Standard also suggests checking the second page
         let oob = self.read_page_internal(first_page + 1, page_size as u16, 1)?;
-        if oob[0] != 0xFF {
-            return Ok(true);
-        }
-
-        Ok(false)
+        Ok(oob[0] != 0xFF)
     }
 
     fn check_ecc_status(&mut self, page: u32) -> Result<()> {
