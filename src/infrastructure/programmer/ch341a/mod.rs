@@ -44,11 +44,13 @@ impl Ch341a {
         Ok(ch341a)
     }
 
-    /// Configure SPI mode
+    /// Configure SPI mode and speed
     fn configure_spi(&mut self) -> Result<()> {
         debug!("Configuring CH341A for SPI mode...");
-        let cmd = protocol::build_set_mode_cmd(self.speed);
-        self.bulk_write(&cmd)?;
+        let speed_cmd = protocol::build_set_speed_cmd(self.speed);
+        self.bulk_write(&speed_cmd)?;
+        let mode_cmd = protocol::build_set_mode_cmd(self.speed);
+        self.bulk_write(&mode_cmd)?;
         self.current_outputs = 0x37;
         Ok(())
     }
@@ -95,12 +97,18 @@ impl Programmer for Ch341a {
             return Ok(());
         }
 
-        // CH341A has a 32-byte SPI transfer limit per packet for standard transfer
-        for (tx_chunk, rx_chunk) in tx_data.chunks(32).zip(rx_data.chunks_mut(32)) {
+        // CH341A USB packet is 32 bytes: 1 byte CMD_SPI_STREAM + up to 31 data bytes.
+        // Hardware shifts LSB-first, so TX/RX bytes are bit-reversed for MSB-first SPI.
+        for (tx_chunk, rx_chunk) in tx_data
+            .chunks(protocol::MAX_SPI_TRANSFER_SIZE)
+            .zip(rx_data.chunks_mut(protocol::MAX_SPI_TRANSFER_SIZE))
+        {
             let cmd = protocol::build_spi_transfer_cmd(tx_chunk);
             self.bulk_write(&cmd)?;
             let response = self.bulk_read(tx_chunk.len())?;
-            rx_chunk.copy_from_slice(&response);
+            for (dst, src) in rx_chunk.iter_mut().zip(response.iter()) {
+                *dst = src.reverse_bits();
+            }
         }
 
         Ok(())
@@ -146,7 +154,7 @@ impl Programmer for Ch341a {
             let cmd = protocol::build_spi_stream_cmd(chunk_size);
             self.bulk_write(&cmd)?;
             let response = self.bulk_read(chunk_size)?;
-            result.extend_from_slice(&response);
+            result.extend(response.into_iter().map(u8::reverse_bits));
         }
 
         Ok(result)
@@ -175,26 +183,11 @@ impl Programmer for Ch341a {
     }
 
     fn spi_transaction_write(&mut self, tx: &[u8]) -> Result<()> {
-        // Optimized: Combine CS and data into a single USB transfer
-        // This significantly reduces overhead for small writes (like commands)
-        let mut cmd = Vec::with_capacity(tx.len() + 10);
-
-        // 1. Assert CS
-        cmd.extend_from_slice(&protocol::build_cs_cmd(true));
-
-        // 2. Data
+        self.set_cs(true)?;
         if !tx.is_empty() {
-            // Use stream command or simple append if we had a helper.
-            // Manually build the SPI stream command part here to inline it
-            // Note: build_spi_transfer_cmd includes the CMD_SPI_STREAM byte.
-            cmd.push(protocol::CMD_SPI_STREAM);
-            cmd.extend_from_slice(tx);
+            self.spi_write(tx)?;
         }
-
-        // 3. De-assert CS
-        cmd.extend_from_slice(&protocol::build_cs_cmd(false));
-
-        self.bulk_write(&cmd)?;
+        self.set_cs(false)?;
         Ok(())
     }
 

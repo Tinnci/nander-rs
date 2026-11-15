@@ -134,13 +134,21 @@ pub mod pins {
 // Command Builders
 // ============================================================================
 
-/// Build command to set SPI mode and speed
-pub fn build_set_mode_cmd(speed: SpiSpeed) -> Vec<u8> {
+/// Build command to set SPI clock speed via I2C/SPI stream
+pub fn build_set_speed_cmd(speed: SpiSpeed) -> Vec<u8> {
+    vec![
+        CMD_I2C_STREAM,
+        i2c_sub::SET | (speed as u8),
+        CMD_I2C_STM_END,
+    ]
+}
+
+/// Build command to set SPI pin directions and initial output states
+pub fn build_set_mode_cmd(_speed: SpiSpeed) -> Vec<u8> {
     vec![
         CMD_UIO_STREAM,
-        CMD_UIO_STM_OUT | 0x37, // Set all output pins high initially (CS high)
+        CMD_UIO_STM_OUT | 0x37, // Set all output pins high initially (CS high, SCK low)
         CMD_UIO_STM_DIR | 0x3B, // Dir: D0, D1, D3, D4, D5 as Out (111011b = 0x3B)
-        CMD_UIO_STM_US | (speed as u8),
         CMD_UIO_STM_END,
     ]
 }
@@ -169,11 +177,11 @@ pub fn build_cs_cmd(active: bool) -> Vec<u8> {
     ]
 }
 
-/// Build SPI transfer command
+/// Build SPI transfer command (bit-reversed for CH341A LSB-first hardware)
 pub fn build_spi_transfer_cmd(data: &[u8]) -> Vec<u8> {
     let mut cmd = Vec::with_capacity(data.len() + 1);
     cmd.push(CMD_SPI_STREAM);
-    cmd.extend_from_slice(data);
+    cmd.extend(data.iter().map(|b| b.reverse_bits()));
     cmd
 }
 
@@ -193,14 +201,14 @@ pub fn build_gpio_cmd(pin: u8, level: bool, current_outputs: u8) -> Vec<u8> {
     ]
 }
 
-/// Maximum SPI transfer size in one USB packet (standard mode)
-pub const MAX_SPI_TRANSFER_SIZE: usize = 32;
+/// Maximum SPI transfer payload per 32-byte USB packet (1 cmd byte + 31 data bytes)
+pub const MAX_SPI_TRANSFER_SIZE: usize = 31;
 
 /// Maximum USB bulk transfer size (CH341A hardware limit)
 pub const MAX_USB_BULK_SIZE: usize = 4096;
 
-/// Maximum SPI stream size per USB transaction
-pub const MAX_SPI_STREAM_SIZE: usize = MAX_USB_BULK_SIZE - 1;
+/// Maximum SPI stream payload per USB transaction (128 * 31 = 3968 bytes)
+pub const MAX_SPI_STREAM_SIZE: usize = (MAX_USB_BULK_SIZE / 32) * MAX_SPI_TRANSFER_SIZE;
 
 // ============================================================================
 // Packet Helpers
@@ -216,10 +224,44 @@ pub fn chunk_transfer_bulk(data: &[u8]) -> impl Iterator<Item = &[u8]> {
     data.chunks(MAX_SPI_STREAM_SIZE)
 }
 
-/// Build a bulk SPI stream command for larger transfers
+/// Build a bulk SPI stream command for larger transfers.
+/// Each 32-byte USB packet starts with `CMD_SPI_STREAM` followed by up to 31 dummy `0xFF` bytes.
 pub fn build_spi_stream_cmd(len: usize) -> Vec<u8> {
-    let mut cmd = Vec::with_capacity(len + 1);
-    cmd.push(CMD_SPI_STREAM);
-    cmd.resize(len + 1, 0xFF);
+    let packets = len.div_ceil(MAX_SPI_TRANSFER_SIZE);
+    let mut cmd = Vec::with_capacity(len + packets);
+    let mut remaining = len;
+    while remaining > 0 {
+        let chunk = remaining.min(MAX_SPI_TRANSFER_SIZE);
+        cmd.push(CMD_SPI_STREAM);
+        cmd.resize(cmd.len() + chunk, 0xFF);
+        remaining -= chunk;
+    }
     cmd
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spi_transfer_cmd_reverses_bits_for_lsb_first_ch341a() {
+        // JEDEC Read ID (0x9F = 1001_1111) must be sent as 0xF9 (1111_1001)
+        let cmd = build_spi_transfer_cmd(&[0x9F, 0x05]);
+        assert_eq!(cmd, vec![CMD_SPI_STREAM, 0xF9, 0xA0]);
+    }
+
+    #[test]
+    fn spi_stream_cmd_inserts_cmd_byte_every_32_byte_packet() {
+        let cmd = build_spi_stream_cmd(64);
+        assert_eq!(cmd.len(), 64 + 3);
+        assert_eq!(cmd[0], CMD_SPI_STREAM);
+        assert_eq!(cmd[32], CMD_SPI_STREAM);
+        assert_eq!(cmd[64], CMD_SPI_STREAM);
+    }
+
+    #[test]
+    fn set_speed_cmd_uses_i2c_stream_set() {
+        let cmd = build_set_speed_cmd(SpiSpeed::Medium);
+        assert_eq!(cmd, vec![CMD_I2C_STREAM, i2c_sub::SET | 5, CMD_I2C_STM_END]);
+    }
 }
